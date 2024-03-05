@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sortedcontainers-pydantic"
+dynamic = ["version"]
+description = "Pydantic support for the sortedcontainers package."
+readme = "README.md"
+authors = [{ name = "Jay Qi", email = "jayqi.opensource@gmail.com" }]
+license = { file = "LICENSE" }
+keywords = ["sorted", "sorteddict", "sortedlist", "sortedset", "pydantic"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = '>=3.8'
+dependencies = ["pydantic>=2", "pydantic-core", "sortedcontainers"]
+
+[project.optional-dependencies]
+tests = ["pytest>=6"]
+
+[project.urls]
+"Homepage" = "https://github.com/jayqi/sortedcontainers-pydantic/"
+"Repository" = "https://github.com/jayqi/sortedcontainers-pydantic"
+"Bug Tracker" = "https://github.com/jayqi/sortedcontainers-pydantic/issues"
+
+[tool.hatch.version]
+path = "sortedcontainers_pydantic.py"
+
+## TOOLS ##
+
+[tool.ruff]
+line-length = 99
+src = ["*.py"]
+
+[tool.ruff.lint]
+select = [
+    "E", # Pyflakes
+    "F", # Pycodestyle
+    "I", # isort
+]
+unfixable = ["F"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["sortedcontainers_pydantic"]
+force-sort-within-sections = true
+
+[tool.mypy]
+files = ["*.py"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=sortedcontainers_pydantic --cov-report=term --cov-report=html --cov-report=xml -v"
+testpaths = ["tests.py"]

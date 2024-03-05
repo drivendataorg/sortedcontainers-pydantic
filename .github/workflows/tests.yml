@@ -1,0 +1,93 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Run every Sunday
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+jobs:
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: drivendataorg/setup-python-uv-action@v1
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          uv pip install -r dev-requirements.txt
+
+      - name: Lint package
+        run: |
+          ruff format --check
+          ruff check
+          mypy --install-types --non-interactive
+
+  tests:
+    name: "Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})"
+    needs: code-quality
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [3.8, 3.9, "3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: drivendataorg/setup-python-uv-action@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          uv pip install -r dev-requirements.txt
+
+      - name: Run tests
+        run: |
+          pytest
+
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+
+      - name: Build distribution and test installation
+        shell: bash
+        run: |
+          python -m build
+          if [[ ${{ matrix.os }} == "windows-latest" ]]; then
+            PYTHON_BIN=Scripts/python
+          else
+            PYTHON_BIN=bin/python
+          fi
+          echo "=== Testing wheel installation ==="
+          python -m venv .venv-whl
+          .venv-whl/$PYTHON_BIN -m pip install dist/sortedcontainers_pydantic-*.whl
+          .venv-whl/$PYTHON_BIN -c "import sortedcontainers_pydantic"
+          echo "=== Testing source installation ==="
+          python -m venv .venv-sdist
+          .venv-sdist/$PYTHON_BIN -m pip install dist/sortedcontainers_pydantic-*.tar.gz --force-reinstall
+          .venv-sdist/$PYTHON_BIN -c "import sortedcontainers_pydantic"
+
+  # notify:
+  #   name: Notify failed build
+  #   needs: [code-quality, tests]
+  #   if: failure() && github.event.pull_request == null
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: jayqi/failed-build-issue-action@v1
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}

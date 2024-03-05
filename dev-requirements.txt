@@ -1,0 +1,9 @@
+-e .
+
+build
+coverage
+ruff
+mypy
+pytest>6
+pytest-cov
+sortedcontainers-stubs
