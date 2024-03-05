@@ -32,8 +32,8 @@ class SortedDict(sortedcontainers.SortedDict):
         # Get schema for Iterable type based on source type has arguments
         args = get_args(source_type)
         if args:
-            mapping_t_schema = handler.generate_schema(Mapping[*args])  # type: ignore
-            iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[*args]])  # type: ignore
+            mapping_t_schema = handler.generate_schema(Mapping[args[0], args[1]])  # type: ignore
+            iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[args[0], args[1]]])  # type: ignore
         else:
             mapping_t_schema = handler.generate_schema(Mapping)
             iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[Any, Any]])
@@ -89,7 +89,7 @@ class SortedList(sortedcontainers.SortedList):
         # Get schema for Iterable type based on source type has arguments
         args = get_args(source_type)
         if args:
-            iterable_t_schema = handler.generate_schema(Iterable[*args])  # type: ignore
+            iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore
         else:
             iterable_t_schema = handler.generate_schema(Iterable)
 
@@ -139,8 +139,8 @@ class SortedSet(sortedcontainers.SortedSet):
         # Get schema for Iterable type based on source type has arguments
         args = get_args(source_type)
         if args:
-            set_t_schema = handler.generate_schema(Set[*args])  # type: ignore
-            iterable_t_schema = handler.generate_schema(Iterable[*args])  # type: ignore
+            set_t_schema = handler.generate_schema(Set[args[0]])  # type: ignore
+            iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore
         else:
             set_t_schema = handler.generate_schema(Set)
             iterable_t_schema = handler.generate_schema(Iterable)
