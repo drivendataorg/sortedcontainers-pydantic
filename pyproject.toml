@@ -54,7 +54,7 @@ known-first-party = ["sortedcontainers_pydantic"]
 force-sort-within-sections = true
 
 [tool.mypy]
-files = ["*.py"]
+files = ["sortedcontainers_pydantic.py"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
