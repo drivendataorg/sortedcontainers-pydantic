@@ -164,11 +164,11 @@ class SortedSet(sortedcontainers.SortedSet):
             ]
         )
 
-        # Serializer that converts an instance to a set
-        as_set_serializer = core_schema.plain_serializer_function_ser_schema(set)
+        # Serializer that converts an instance to a list
+        as_list_serializer = core_schema.plain_serializer_function_ser_schema(list)
 
         return core_schema.json_or_python_schema(
             json_schema=from_set_schema,
             python_schema=python_schema,
-            serialization=as_set_serializer,
+            serialization=as_list_serializer,
         )
