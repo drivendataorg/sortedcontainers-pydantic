@@ -14,8 +14,8 @@ _VT = TypeVar("_VT")  # Value type.
 _T = TypeVar("_T")
 _HashableT = TypeVar("_HashableT", bound=Hashable)
 
-# sortedcontainers is not type annotated so we can't annotate its classes as generics in Python 3.8
-# Need this hack until we don't support Python 3.8 anymore
+# sortedcontainers is not type annotated directed so we need this hack to declare the parent
+# classes as generics for Python 3.8.
 # https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-classes-that-are-generic-in-stubs-but-not-at-runtime
 if TYPE_CHECKING:
 
