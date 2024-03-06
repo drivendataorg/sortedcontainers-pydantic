@@ -1,5 +1,5 @@
 from collections.abc import Hashable, Mapping
-from typing import TYPE_CHECKING, Any, Iterable, Set, Tuple, TypeVar, get_args
+from typing import TYPE_CHECKING, Any, Generic, Iterable, Set, Tuple, TypeVar, get_args
 
 from pydantic import (
     GetCoreSchemaHandler,
@@ -14,24 +14,24 @@ _VT = TypeVar("_VT")  # Value type.
 _T = TypeVar("_T")
 _HashableT = TypeVar("_HashableT", bound=Hashable)
 
-# Hacky way to use be able properly parameterize parent classes as generics
-# https://github.com/python/mypy/issues/5264#issuecomment-399407428
+# sortedcontainers is not type annotated so we can't annotate its classes as generics in Python 3.8
+# Need this hack until we don't support Python 3.8 anymore
+# https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-classes-that-are-generic-in-stubs-but-not-at-runtime
 if TYPE_CHECKING:
-    _SortedDict = sortedcontainers.SortedDict
-    _SortedList = sortedcontainers.SortedList
-    _SortedSet = sortedcontainers.SortedSet
+
+    class _SortedDict(sortedcontainers.SortedDict[_KT, _VT]): ...
+
+    class _SortedList(sortedcontainers.SortedList[_T]): ...
+
+    class _SortedSet(sortedcontainers.SortedSet[_HashableT]): ...
+
 else:
 
-    class _Subscriptable:
-        def __init__(self, cls) -> None:
-            self.cls = cls
+    class _SortedDict(Generic[_KT, _VT], sortedcontainers.SortedDict): ...
 
-        def __getitem__(self, *args):
-            return self.cls
+    class _SortedList(Generic[_T], sortedcontainers.SortedList): ...
 
-    _SortedDict = _Subscriptable(sortedcontainers.SortedDict)
-    _SortedList = _Subscriptable(sortedcontainers.SortedList)
-    _SortedSet = _Subscriptable(sortedcontainers.SortedSet)
+    class _SortedSet(Generic[_HashableT], sortedcontainers.SortedSet): ...
 
 
 class SortedDict(_SortedDict[_KT, _VT]):
