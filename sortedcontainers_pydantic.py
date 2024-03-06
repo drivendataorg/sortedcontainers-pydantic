@@ -1,5 +1,5 @@
 from collections.abc import Hashable, Mapping
-from typing import Any, Iterable, Set, Tuple, TypeVar, get_args
+from typing import TYPE_CHECKING, Any, Iterable, Set, Tuple, TypeVar, get_args
 
 from pydantic import (
     GetCoreSchemaHandler,
@@ -14,8 +14,27 @@ _VT = TypeVar("_VT")  # Value type.
 _T = TypeVar("_T")
 _HashableT = TypeVar("_HashableT", bound=Hashable)
 
+# Hacky way to use be able properly parameterize parent classes as generics
+# https://github.com/python/mypy/issues/5264#issuecomment-399407428
+if TYPE_CHECKING:
+    _SortedDict = sortedcontainers.SortedDict
+    _SortedList = sortedcontainers.SortedList
+    _SortedSet = sortedcontainers.SortedSet
+else:
 
-class SortedDict(sortedcontainers.SortedDict[_KT, _VT]):
+    class _Subscriptable:
+        def __init__(self, cls) -> None:
+            self.cls = cls
+
+        def __getitem__(self, *args):
+            return self.cls
+
+    _SortedDict = _Subscriptable(sortedcontainers.SortedDict)
+    _SortedList = _Subscriptable(sortedcontainers.SortedList)
+    _SortedSet = _Subscriptable(sortedcontainers.SortedSet)
+
+
+class SortedDict(_SortedDict[_KT, _VT]):
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -72,7 +91,7 @@ class SortedDict(sortedcontainers.SortedDict[_KT, _VT]):
         )
 
 
-class SortedList(sortedcontainers.SortedList[_T]):
+class SortedList(_SortedList[_T]):
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -121,7 +140,7 @@ class SortedList(sortedcontainers.SortedList[_T]):
         )
 
 
-class SortedSet(sortedcontainers.SortedSet[_HashableT]):
+class SortedSet(_SortedSet[_HashableT]):
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
