@@ -1,5 +1,5 @@
-from collections.abc import Mapping
-from typing import Any, Iterable, Set, Tuple, get_args
+from collections.abc import Hashable, Mapping
+from typing import Any, Iterable, Set, Tuple, TypeVar, get_args
 
 from pydantic import (
     GetCoreSchemaHandler,
@@ -9,8 +9,13 @@ import sortedcontainers
 
 __version__ = "1.0.0"
 
+_KT = TypeVar("_KT", bound=Hashable)  # Key type.
+_VT = TypeVar("_VT")  # Value type.
+_T = TypeVar("_T")
+_HashableT = TypeVar("_HashableT", bound=Hashable)
 
-class SortedDict(sortedcontainers.SortedDict):
+
+class SortedDict(sortedcontainers.SortedDict[_KT, _VT]):
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -67,7 +72,7 @@ class SortedDict(sortedcontainers.SortedDict):
         )
 
 
-class SortedList(sortedcontainers.SortedList):
+class SortedList(sortedcontainers.SortedList[_T]):
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -116,7 +121,7 @@ class SortedList(sortedcontainers.SortedList):
         )
 
 
-class SortedSet(sortedcontainers.SortedSet):
+class SortedSet(sortedcontainers.SortedSet[_HashableT]):
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
