@@ -1,5 +1,15 @@
-from collections.abc import Hashable, Mapping
-from typing import TYPE_CHECKING, Any, Generic, Iterable, Set, Tuple, TypeVar, get_args
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Hashable,
+    Iterable,
+    Mapping,
+    Set,
+    Tuple,
+    TypeVar,
+    get_args,
+)
 
 from pydantic import (
     GetCoreSchemaHandler,
