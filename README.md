@@ -7,14 +7,14 @@
 
 This package adds [Pydantic](https://docs.pydantic.dev/latest/) support to [sortedcontainers](https://github.com/grantjenks/python-sortedcontainers/), a fast pure-Python library for sorted mutable collections. 
 
-It implements [Pydantic's special methods](https://docs.pydantic.dev/latest/concepts/types/#customizing-validation-with-__get_pydantic_core_schema__) on subclasses of sortedcontainer's `SortedDict`, `SortedList`, and `SortedSet` classes so that you can use them with Pydantic's models, validation, and serialization. To use, simply import the respective class of the same name from `sortedcontainers_pydantic` instead of from `sortedcontainers`. Currently, only Pydantic V2 is supported.
+It implements [Pydantic's special methods](https://docs.pydantic.dev/latest/concepts/types/#customizing-validation-with-__get_pydantic_core_schema__) on subclasses of sortedcontainer's `SortedDict`, `SortedList`, and `SortedSet` classes so that you can use them with Pydantic's models, validation, and serialization. To use, simply import the respective class of the same name from `sortedcontainers_pydantic` instead of from `sortedcontainers`. Only Pydantic V2 is supported.
 
 ```python
 from pydantic import BaseModel, TypeAdapter
 from sortedcontainers_pydantic import SortedList
 
 class MyModel(BaseModel):
-    sorted_list: SortedList
+    sorted_list: SortedList[int]
 
 MyModel(sorted_list=[3, 1, 2])
 #> MyModel(sorted_list=SortedList([1, 2, 3]))
