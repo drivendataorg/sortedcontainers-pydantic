@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple
 
 from pydantic import BaseModel
 
@@ -12,7 +12,7 @@ class MyModel(BaseModel):
 
 
 m = MyModel(
-    sorted_dict={"charlie": 2, "alpha": 3, "bravo": 1},
+    sorted_dict={"carol": 2, "alice": 3, "bob": 1},
     sorted_list=[3.0, 2.0, 1.0],
     sorted_set={(2, 9), (3, 5), (1, 3)},
 )
@@ -25,8 +25,3 @@ m2 = MyModel.model_validate_json(m.model_dump_json())
 assert m == m2
 print(repr(m2))
 #> MyModel(sorted_dict=SortedDict({'alpha': 3, 'bravo': 1, 'charlie': 2}), sorted_list=SortedList([1.0, 2.0, 3.0]), sorted_set=SortedSet([(1, 3), (2, 9), (3, 5)]))
-
-if TYPE_CHECKING:
-    reveal_type(m.sorted_dict)  # noqa: F821
-    reveal_type(m.sorted_list)  # noqa: F821
-    reveal_type(m.sorted_set)  # noqa: F821

@@ -11,7 +11,7 @@ on:
 
 jobs:
   code-quality:
-    name: Code Quality
+    name: Code quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,6 +29,9 @@ jobs:
         run: |
           ruff format --check
           ruff check
+
+      - name: Type check
+        run: |
           mypy --install-types --non-interactive
 
   tests:
@@ -64,11 +67,28 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: ${{ matrix.os == 'ubuntu-latest' }}
 
+  test-build-and-install:
+    name: "Test build and install"
+    needs: code-quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: drivendataorg/setup-python-uv-action@v1
+        with:
+          python-version: "3.12"
+
+      - name: Install build
+        run: |
+          uv pip install build
+
       - name: Build distribution and test installation
         shell: bash
         run: |
           python -m build
-          if [[ ${{ matrix.os }} == "windows-latest" ]]; then
+          if [[ ${{ runner.os }} == "Windows" ]]; then
             PYTHON_BIN=Scripts/python
           else
             PYTHON_BIN=bin/python

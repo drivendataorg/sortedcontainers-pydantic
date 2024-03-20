@@ -33,7 +33,7 @@ tests = ["pytest>=6"]
 "Bug Tracker" = "https://github.com/jayqi/sortedcontainers-pydantic/issues"
 
 [tool.hatch.version]
-path = "sortedcontainers_pydantic.py"
+path = "sortedcontainers_pydantic/__init__.py"
 
 ## TOOLS ##
 
@@ -54,11 +54,10 @@ known-first-party = ["sortedcontainers_pydantic"]
 force-sort-within-sections = true
 
 [tool.mypy]
-files = ["sortedcontainers_pydantic.py", "example.py"]
-ignore_missing_imports = true
+files = ["sortedcontainers_pydantic", "tests/typechecks.py", "example.py"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "--cov=sortedcontainers_pydantic --cov-report=term --cov-report=html --cov-report=xml -v"
-testpaths = ["tests.py"]
+testpaths = ["tests"]
