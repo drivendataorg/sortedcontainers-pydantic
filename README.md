@@ -2,8 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/sortedcontainers-pydantic.svg)](https://pypi.org/project/sortedcontainers-pydantic/)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/sortedcontainers-pydantic)](https://pypi.org/project/sortedcontainers-pydantic/)
-[![tests](https://github.com/jayqi/sortedcontainers-pydantic/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/jayqi/sortedcontainers-pydantic/actions/workflows/tests.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/jayqi/sortedcontainers-pydantic/branch/main/graph/badge.svg)](https://codecov.io/gh/jayqi/sortedcontainers-pydantic)
+[![tests](https://github.com/drivendataorg/sortedcontainers-pydantic/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/drivendataorg/sortedcontainers-pydantic/actions/workflows/tests.yml?query=branch%3Amain)
+[![codecov](https://codecov.io/gh/drivendataorg/sortedcontainers-pydantic/branch/main/graph/badge.svg)](https://codecov.io/gh/drivendataorg/sortedcontainers-pydantic)
 
 This package adds [Pydantic](https://docs.pydantic.dev/latest/) support to [sortedcontainers](https://github.com/grantjenks/python-sortedcontainers/), a fast pure-Python library for sorted mutable collections. 
 
@@ -36,8 +36,8 @@ TypeAdapter(SortedList).validate_json("[3, 1, 2]")
 
 ## Installation
 
-sortedcontainers-pydantic is not yet available on PyPI. For now, install from GitHub:
+sortedcontainers-pydantic is available on [PyPI](https://pypi.org/project/sortedcontainers-pydantic/). You can install it with 
 
 ```bash
-pip install sortedcontainers-pydantic@git+https://github.com/jayqi/sortedcontainers-pydantic.git
+pip install sortedcontainers-pydantic
 ```

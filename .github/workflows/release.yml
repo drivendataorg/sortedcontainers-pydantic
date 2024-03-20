@@ -1,0 +1,51 @@
+name: release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    name: Publish release
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python and uv
+        uses: drivendataorg/setup-python-uv-action@v1
+        with:
+          python-version: "3.11"
+
+      - name: Install requirements
+        run: |
+          uv pip install -r dev-requirements.txt
+
+      - name: Check that versions match
+        id: version
+        run: |
+          echo "Release tag: [${{ github.ref_name }}]"
+          PACKAGE_VERSION=$(python -c "import sortedcontainers_pydantic; print(sortedcontainers_pydantic.__version__)")
+          echo "Package version: [$PACKAGE_VERSION]"
+          [ "${{ github.ref_name }}" == "v$PACKAGE_VERSION" ] || { exit 1; }
+          echo "major_minor_version=v${PACKAGE_VERSION%.*}" >> $GITHUB_OUTPUT
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Publish to Test PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.11
+        with:
+          user: ${{ secrets.PYPI_TEST_USERNAME }}
+          password: ${{ secrets.PYPI_TEST_PASSWORD }}
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: Publish to Production PyPI
+        uses: pypa/gh-action-pypi-publish@v1.8.11
+        with:
+          user: ${{ secrets.PYPI_PROD_USERNAME }}
+          password: ${{ secrets.PYPI_PROD_PASSWORD }}
+          skip-existing: false

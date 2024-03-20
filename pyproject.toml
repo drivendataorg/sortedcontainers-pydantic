@@ -7,8 +7,11 @@ name = "sortedcontainers-pydantic"
 dynamic = ["version"]
 description = "Pydantic support for the sortedcontainers package."
 readme = "README.md"
-authors = [{ name = "Jay Qi", email = "jayqi.opensource@gmail.com" }]
-license = { file = "LICENSE" }
+authors = [
+    { name = "DrivenData", email = "info@drivendata.org" },
+    { name = "Jay Qi", email = "jayqi.opensource@gmail.com" },
+]
+license = { text = "MIT License" }
 keywords = ["sorted", "sorteddict", "sortedlist", "sortedset", "pydantic"]
 classifiers = [
     "Intended Audience :: Developers",
@@ -20,6 +23,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
 ]
 requires-python = '>=3.8'
 dependencies = ["pydantic>=2", "pydantic-core", "sortedcontainers"]
