@@ -84,3 +84,9 @@ plugins = ["pydantic.mypy"]
 minversion = "6.0"
 addopts = "--cov=sortedcontainers_pydantic --cov-report=term --cov-report=html --cov-report=xml -v"
 testpaths = ["tests"]
+
+[tool.coverage.paths]
+typenames = [
+  "sortedcontainers_pydantic/",
+  "*/site-packages/sortedcontainers_pydantic/"
+]
