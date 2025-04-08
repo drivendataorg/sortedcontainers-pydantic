@@ -1,3 +1,4 @@
+import importlib.metadata
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -17,7 +18,7 @@ from pydantic import (
 from pydantic_core import core_schema
 import sortedcontainers
 
-__version__ = "1.0.0"
+__version__ = importlib.metadata.version("sortedcontainers-pydantic")
 
 _KT = TypeVar("_KT", bound=Hashable)  # Key type.
 _VT = TypeVar("_VT")  # Value type.
