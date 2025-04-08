@@ -16,23 +16,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python and uv
-        uses: drivendataorg/setup-python-uv-action@v1
-        with:
-          python-version: "3.11"
+      - uses: extractions/setup-just@v2
 
-      - name: Install dependencies
-        run: |
-          uv pip install -r dev-requirements.txt
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-suffix: "dev"
+          cache-dependency-glob: |
+            uv.lock
 
       - name: Lint package
         run: |
-          ruff format --check
-          ruff check
+          just lint
 
       - name: Type check
         run: |
-          mypy --install-types --non-interactive
+          just typecheck
 
   tests:
     name: "Tests (${{ matrix.os }}, Python ${{ matrix.python-version }})"
@@ -41,73 +40,37 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.8, 3.9, "3.10", "3.11", "3.12"]
+        python-version: [3.8, 3.9, "3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python and uv
-        uses: drivendataorg/setup-python-uv-action@v1
+      - uses: astral-sh/setup-uv@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          uv pip install -r dev-requirements.txt
+          enable-cache: true
+          cache-suffix: "tests-${{ matrix.python-version }}"
+          cache-dependency-glob: |
+            pyproject.toml
 
       - name: Run tests
         run: |
-          pytest
+          just python=${{ matrix.python-version }} test
 
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml
-          fail_ci_if_error: true
+          fail_ci_if_error: ${{ (github.event_name == 'push' && true) || (github.event_name == 'pull_request' && true) || false }}
           token: ${{ secrets.CODECOV_TOKEN }}
         if: ${{ matrix.os == 'ubuntu-latest' }}
 
-  test-build-and-install:
-    name: "Test build and install"
-    needs: code-quality
+
+  notify:
+    name: Notify failed build
+    needs: [code-quality, tests]
+    if: failure() && github.event.pull_request == null
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python and uv
-        uses: drivendataorg/setup-python-uv-action@v1
+      - uses: jayqi/failed-build-issue-action@v1
         with:
-          python-version: "3.12"
-
-      - name: Install build
-        run: |
-          uv pip install build
-
-      - name: Build distribution and test installation
-        shell: bash
-        run: |
-          python -m build
-          if [[ ${{ runner.os }} == "Windows" ]]; then
-            PYTHON_BIN=Scripts/python
-          else
-            PYTHON_BIN=bin/python
-          fi
-          echo "=== Testing wheel installation ==="
-          python -m venv .venv-whl
-          .venv-whl/$PYTHON_BIN -m pip install dist/sortedcontainers_pydantic-*.whl
-          .venv-whl/$PYTHON_BIN -c "import sortedcontainers_pydantic"
-          echo "=== Testing source installation ==="
-          python -m venv .venv-sdist
-          .venv-sdist/$PYTHON_BIN -m pip install dist/sortedcontainers_pydantic-*.tar.gz --force-reinstall
-          .venv-sdist/$PYTHON_BIN -c "import sortedcontainers_pydantic"
-
-  # notify:
-  #   name: Notify failed build
-  #   needs: [code-quality, tests]
-  #   if: failure() && github.event.pull_request == null
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: jayqi/failed-build-issue-action@v1
-  #       with:
-  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
