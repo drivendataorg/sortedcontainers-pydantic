@@ -1,7 +1,10 @@
+from dataclasses import dataclass
+from functools import partial
 import importlib.metadata
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Generic,
     Hashable,
     Iterable,
@@ -10,6 +13,7 @@ from typing import (
     Tuple,
     TypeVar,
     get_args,
+    get_origin,
 )
 
 from pydantic import (
@@ -36,6 +40,8 @@ if TYPE_CHECKING:
 
     class _SortedSet(sortedcontainers.SortedSet[_HashableT]): ...
 
+    class _SortedKeyList(sortedcontainers.SortedKeyList[_T]): ...
+
 else:
 
     class _SortedDict(Generic[_KT, _VT], sortedcontainers.SortedDict): ...
@@ -44,8 +50,10 @@ else:
 
     class _SortedSet(Generic[_HashableT], sortedcontainers.SortedSet): ...
 
+    class _SortedKeyList(Generic[_T], sortedcontainers.SortedKeyList): ...
 
-class SortedDict(_SortedDict[_KT, _VT]):
+
+class SortedDictPydanticAnnotation:
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -102,7 +110,11 @@ class SortedDict(_SortedDict[_KT, _VT]):
         )
 
 
-class SortedList(_SortedList[_T]):
+class SortedDict(_SortedDict[_KT, _VT], SortedDictPydanticAnnotation):
+    pass
+
+
+class SortedListPydanticAnnotation:
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -118,6 +130,7 @@ class SortedList(_SortedList[_T]):
             - If it's an iterable, pass to SortedList constructor
         - Serialization: Convert to a list
         """
+        print("hello from SortedListPydanticAnnotation")
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
 
@@ -151,7 +164,15 @@ class SortedList(_SortedList[_T]):
         )
 
 
-class SortedSet(_SortedSet[_HashableT]):
+class SortedList(_SortedList[_T], SortedListPydanticAnnotation):
+    pass
+
+
+class SortedKeyList(_SortedKeyList[_T], SortedListPydanticAnnotation):
+    pass
+
+
+class SortedSetPydanticAnnotation:
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -206,4 +227,32 @@ class SortedSet(_SortedSet[_HashableT]):
             json_schema=from_set_schema,
             python_schema=python_schema,
             serialization=as_list_serializer,
+        )
+
+
+class SortedSet(_SortedSet[_HashableT], SortedSetPydanticAnnotation):
+    pass
+
+
+key_type_mapping = {
+    SortedDict: SortedDict,
+    SortedList: SortedKeyList,
+    SortedKeyList: SortedKeyList,
+    SortedSet: SortedSet,
+}
+
+
+@dataclass(frozen=True)
+class Key:
+    key: Callable
+
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        origin = get_origin(source_type) or source_type
+        if origin is SortedList:
+            origin = SortedKeyList
+        constructor = partial(origin, key=self.key)
+        return core_schema.no_info_after_validator_function(
+            function=constructor, schema=handler(source_type)
         )
