@@ -21,7 +21,7 @@ format:
 # Run static typechecking
 typecheck:
     uv run --python {{python}} --no-dev --group typecheck --isolated \
-        mypy sortedcontainers_pydantic tests/typechecks.py --install-types --non-interactive
+        mypy sortedcontainers_pydantic tests/typechecks.py --install-types --non-interactive --strict
 
 # Run the tests
 test *args:
