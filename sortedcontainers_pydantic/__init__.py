@@ -3,6 +3,7 @@ from functools import partial
 import importlib.metadata
 from typing import (
     TYPE_CHECKING,
+    Annotated,
     Any,
     Callable,
     Generic,
@@ -12,6 +13,7 @@ from typing import (
     Set,
     Tuple,
     TypeVar,
+    Union,
     get_args,
     get_origin,
 )
@@ -42,6 +44,7 @@ if TYPE_CHECKING:
 
     class _SortedKeyList(sortedcontainers.SortedKeyList[_T]): ...
 
+    from typeshed import SupportsRichComparison
 else:
 
     class _SortedDict(Generic[_KT, _VT], sortedcontainers.SortedDict): ...
@@ -51,6 +54,8 @@ else:
     class _SortedSet(Generic[_HashableT], sortedcontainers.SortedSet): ...
 
     class _SortedKeyList(Generic[_T], sortedcontainers.SortedKeyList): ...
+
+    class SupportsRichComparison: ...
 
 
 class SortedDictPydanticAnnotation:
@@ -69,6 +74,10 @@ class SortedDictPydanticAnnotation:
             - If it's an iterable, pass to SortedList constructor
         - Serialization: Convert to a list
         """
+        if cls is SortedDictPydanticAnnotation:
+            # Used as annotation, i.e., Annotated[..., SortedDictPydanticAnnotation]
+            cls = _get_constructor(source_type)
+
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
 
@@ -114,6 +123,11 @@ class SortedDict(_SortedDict[_KT, _VT], SortedDictPydanticAnnotation):
     pass
 
 
+AnnotatedSortedDict = Annotated[
+    sortedcontainers.SortedDict[_KT, _VT], SortedDictPydanticAnnotation
+]
+
+
 class SortedListPydanticAnnotation:
     @classmethod
     def __get_pydantic_core_schema__(
@@ -130,7 +144,10 @@ class SortedListPydanticAnnotation:
             - If it's an iterable, pass to SortedList constructor
         - Serialization: Convert to a list
         """
-        print("hello from SortedListPydanticAnnotation")
+        if cls is SortedListPydanticAnnotation:
+            # Used as annotation, e.g., Annotated[..., SortedListPydanticAnnotation]
+            cls = _get_constructor(source_type)
+
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
 
@@ -168,8 +185,14 @@ class SortedList(_SortedList[_T], SortedListPydanticAnnotation):
     pass
 
 
-class SortedKeyList(_SortedKeyList[_T], SortedListPydanticAnnotation):
+class SortedKeyList(_SortedKeyList[_T], SortedList):
     pass
+
+
+AnnotatedSortedList = Annotated[sortedcontainers.SortedList[_T], SortedListPydanticAnnotation]
+AnnotatedSortedKeyList = Annotated[
+    sortedcontainers.SortedKeyList[_T], SortedListPydanticAnnotation
+]
 
 
 class SortedSetPydanticAnnotation:
@@ -189,6 +212,10 @@ class SortedSetPydanticAnnotation:
             - If it's an iterable, pass to SortedSet constructor
         - Serialization: Convert to a list
         """
+        if cls is SortedSetPydanticAnnotation:
+            # Used as annotation, i.e., Annotated[..., SortedSetPydanticAnnotation]
+            cls = _get_constructor(source_type)
+
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
 
@@ -234,25 +261,55 @@ class SortedSet(_SortedSet[_HashableT], SortedSetPydanticAnnotation):
     pass
 
 
-key_type_mapping = {
-    SortedDict: SortedDict,
-    SortedList: SortedKeyList,
-    SortedKeyList: SortedKeyList,
-    SortedSet: SortedSet,
-}
+AnnotatedSortedSet = Annotated[sortedcontainers.SortedSet[_HashableT], SortedSetPydanticAnnotation]
+
+
+def _parse_annotation(tp: Any):
+    origin = get_origin(tp)
+    if origin is None:
+        # Direct case, e.g., SortedList
+        return tp
+    elif origin is Union:
+        # Optional or Union case, e.g., Optional[SortedList]
+        # Iterate through args
+        for arg in get_args(tp):
+            if arg is not type(None):
+                return _parse_annotation(arg)
+    else:
+        # Generic case, e.g., SortedList[int]
+        return _parse_annotation(origin)
+
+
+def _get_constructor(tp: Any):
+    parsed = _parse_annotation(tp)
+    if parsed is SortedList:
+        return SortedKeyList
+    bases = set((parsed,) + getattr(parsed, "__bases__", tuple()))
+    if bases & {SortedList, SortedDict, SortedSet}:
+        # Subclass of sortedcontainers_pydantic class, return it
+        return parsed
+    elif bases & {
+        sortedcontainers.SortedList,
+        sortedcontainers.SortedDict,
+        sortedcontainers.SortedSet,
+    }:
+        # Subclass of sortedcontainers class, return it
+        return parsed
+    else:
+        raise TypeError(
+            "Expected SortedList, SortedDict, SortedSet or a subclass "
+            f"from sortedcontainers or sortedcontainers_pydantic. Got: {parsed}"
+        )
 
 
 @dataclass(frozen=True)
 class Key:
-    key: Callable
+    key: Callable[[Any], SupportsRichComparison]
 
     def __get_pydantic_core_schema__(
         self, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        origin = get_origin(source_type) or source_type
-        if origin is SortedList:
-            origin = SortedKeyList
-        constructor = partial(origin, key=self.key)
+        constructor = partial(_get_constructor(source_type), key=self.key)
         return core_schema.no_info_after_validator_function(
             function=constructor, schema=handler(source_type)
         )
