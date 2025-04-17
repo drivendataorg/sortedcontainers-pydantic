@@ -139,13 +139,9 @@ def test_sorted_list():
         # sortedcontainers_pydantic subclasses
         sortedcontainers_pydantic.SortedList,
         sortedcontainers_pydantic.SortedList[int],
-        sortedcontainers_pydantic.SortedKeyList,
-        sortedcontainers_pydantic.SortedKeyList[int],
         # annotations
         sortedcontainers_pydantic.AnnotatedSortedList,
         sortedcontainers_pydantic.AnnotatedSortedList[int],
-        sortedcontainers_pydantic.AnnotatedSortedKeyList,
-        sortedcontainers_pydantic.AnnotatedSortedKeyList[int],
     ):
         ta = TypeAdapter(annotation)
         for case in cases:
@@ -162,14 +158,6 @@ def test_sorted_list():
     )
     assert (
         TypeAdapter(sortedcontainers_pydantic.SortedList[int]).json_schema()
-        == TypeAdapter(List[int]).json_schema()
-    )
-    assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedKeyList).json_schema()
-        == TypeAdapter(list).json_schema()
-    )
-    assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedKeyList[int]).json_schema()
         == TypeAdapter(List[int]).json_schema()
     )
 
@@ -201,13 +189,9 @@ def test_sorted_list_with_key():
         # sortedcontainers_pydantic subclass
         sortedcontainers_pydantic.SortedList,
         sortedcontainers_pydantic.SortedList[int],
-        sortedcontainers_pydantic.SortedKeyList,
-        sortedcontainers_pydantic.SortedKeyList[int],
         # annotation
         sortedcontainers_pydantic.AnnotatedSortedList,
         sortedcontainers_pydantic.AnnotatedSortedList[int],
-        sortedcontainers_pydantic.AnnotatedSortedKeyList,
-        sortedcontainers_pydantic.AnnotatedSortedKeyList[int],
     )
 
     for annotation in annotations:

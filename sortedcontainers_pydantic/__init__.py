@@ -6,7 +6,6 @@ from typing import (
     Annotated,
     Any,
     Callable,
-    Generic,
     Hashable,
     Iterable,
     Mapping,
@@ -24,38 +23,62 @@ from pydantic import (
 from pydantic_core import core_schema
 import sortedcontainers
 
+if TYPE_CHECKING:
+    from _typeshed import SupportsRichComparison
+
+
 __version__ = importlib.metadata.version("sortedcontainers-pydantic")
 
 _KT = TypeVar("_KT", bound=Hashable)  # Key type.
 _VT = TypeVar("_VT")  # Value type.
 _T = TypeVar("_T")
+_OrderableT = TypeVar("_OrderableT", bound="SupportsRichComparison")
 _HashableT = TypeVar("_HashableT", bound=Hashable)
 
-# sortedcontainers is not type annotated directed so we need this hack to declare the parent
-# classes as generics for Python 3.8.
-# https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-classes-that-are-generic-in-stubs-but-not-at-runtime
-if TYPE_CHECKING:
 
-    class _SortedDict(sortedcontainers.SortedDict[_KT, _VT]): ...
+class UnsupportedSourceType(TypeError):
+    pass
 
-    class _SortedList(sortedcontainers.SortedList[_T]): ...
 
-    class _SortedSet(sortedcontainers.SortedSet[_HashableT]): ...
+def _parse_annotation(tp: Any) -> Any:
+    """Parse a type annotation to get the relevant source type we care about, e.g., SortedList from
+    SortedList[int] or from Optional[SortedList[int]].
+    """
+    origin = get_origin(tp)
+    if origin is None:
+        # Direct case, e.g., SortedList
+        return tp
+    elif origin is Union:
+        # Optional or Union case, e.g., Optional[SortedList]
+        # Iterate through args
+        for arg in get_args(tp):
+            if arg is not type(None):
+                return _parse_annotation(arg)
+    else:
+        # Generic case, e.g., SortedList[int]
+        return _parse_annotation(origin)
 
-    class _SortedKeyList(sortedcontainers.SortedKeyList[_T]): ...
 
-    from typeshed import SupportsRichComparison
-else:
-
-    class _SortedDict(Generic[_KT, _VT], sortedcontainers.SortedDict): ...
-
-    class _SortedList(Generic[_T], sortedcontainers.SortedList): ...
-
-    class _SortedSet(Generic[_HashableT], sortedcontainers.SortedSet): ...
-
-    class _SortedKeyList(Generic[_T], sortedcontainers.SortedKeyList): ...
-
-    class SupportsRichComparison: ...
+def _get_constructor(tp: Any) -> Any:
+    """Get the relevant class constructor for the given type annotation, e.g., SortedList from
+    SortedList[int] or from Optional[SortedList[int]].
+    """
+    parsed = _parse_annotation(tp)
+    if parsed is SortedList:
+        return SortedKeyList
+    bases = set((parsed,) + getattr(parsed, "__bases__", tuple()))
+    if bases & {SortedList, SortedDict, SortedSet}:
+        # Subclass of sortedcontainers_pydantic class, return it
+        return parsed
+    elif bases & {
+        sortedcontainers.SortedList,
+        sortedcontainers.SortedDict,
+        sortedcontainers.SortedSet,
+    }:
+        # Subclass of sortedcontainers class, return it
+        return parsed
+    else:
+        raise UnsupportedSourceType
 
 
 class SortedDictPydanticAnnotation:
@@ -84,8 +107,8 @@ class SortedDictPydanticAnnotation:
         # Get schema for Iterable type based on source type has arguments
         args = get_args(source_type)
         if args:
-            mapping_t_schema = handler.generate_schema(Mapping[args[0], args[1]])  # type: ignore
-            iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[args[0], args[1]]])  # type: ignore
+            mapping_t_schema = handler.generate_schema(Mapping[args[0], args[1]])  # type: ignore[valid-type]
+            iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[args[0], args[1]]])  # type: ignore[valid-type]
         else:
             mapping_t_schema = handler.generate_schema(Mapping)
             iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[Any, Any]])
@@ -119,7 +142,7 @@ class SortedDictPydanticAnnotation:
         )
 
 
-class SortedDict(_SortedDict[_KT, _VT], SortedDictPydanticAnnotation):
+class SortedDict(sortedcontainers.SortedDict[_KT, _VT], SortedDictPydanticAnnotation):
     pass
 
 
@@ -154,7 +177,7 @@ class SortedListPydanticAnnotation:
         # Get schema for Iterable type based on source type has arguments
         args = get_args(source_type)
         if args:
-            iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore
+            iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore[valid-type]
         else:
             iterable_t_schema = handler.generate_schema(Iterable)
 
@@ -181,18 +204,19 @@ class SortedListPydanticAnnotation:
         )
 
 
-class SortedList(_SortedList[_T], SortedListPydanticAnnotation):
+class SortedList(sortedcontainers.SortedList[_T], SortedListPydanticAnnotation):
     pass
 
 
-class SortedKeyList(_SortedKeyList[_T], SortedList):
+class SortedKeyList(sortedcontainers.SortedKeyList[_T, _OrderableT], SortedList[_T]):
     pass
 
 
-AnnotatedSortedList = Annotated[sortedcontainers.SortedList[_T], SortedListPydanticAnnotation]
-AnnotatedSortedKeyList = Annotated[
-    sortedcontainers.SortedKeyList[_T], SortedListPydanticAnnotation
-]
+AnnotatedSortedList = Annotated[sortedcontainers.SortedList[_T], SortedListPydanticAnnotation]  # type: ignore[misc]
+
+# Don't define AnnotatedSortedKeyList
+# We generally don't expect people to directly use SortedKeyList in a field definition
+# They should use SortedList instead
 
 
 class SortedSetPydanticAnnotation:
@@ -222,8 +246,8 @@ class SortedSetPydanticAnnotation:
         # Get schema for Iterable type based on source type has arguments
         args = get_args(source_type)
         if args:
-            set_t_schema = handler.generate_schema(Set[args[0]])  # type: ignore
-            iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore
+            set_t_schema = handler.generate_schema(Set[args[0]])  # type: ignore[valid-type]
+            iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore[valid-type]
         else:
             set_t_schema = handler.generate_schema(Set)
             iterable_t_schema = handler.generate_schema(Iterable)
@@ -257,54 +281,16 @@ class SortedSetPydanticAnnotation:
         )
 
 
-class SortedSet(_SortedSet[_HashableT], SortedSetPydanticAnnotation):
+class SortedSet(sortedcontainers.SortedSet[_HashableT], SortedSetPydanticAnnotation):
     pass
 
 
 AnnotatedSortedSet = Annotated[sortedcontainers.SortedSet[_HashableT], SortedSetPydanticAnnotation]
 
 
-def _parse_annotation(tp: Any):
-    origin = get_origin(tp)
-    if origin is None:
-        # Direct case, e.g., SortedList
-        return tp
-    elif origin is Union:
-        # Optional or Union case, e.g., Optional[SortedList]
-        # Iterate through args
-        for arg in get_args(tp):
-            if arg is not type(None):
-                return _parse_annotation(arg)
-    else:
-        # Generic case, e.g., SortedList[int]
-        return _parse_annotation(origin)
-
-
-def _get_constructor(tp: Any):
-    parsed = _parse_annotation(tp)
-    if parsed is SortedList:
-        return SortedKeyList
-    bases = set((parsed,) + getattr(parsed, "__bases__", tuple()))
-    if bases & {SortedList, SortedDict, SortedSet}:
-        # Subclass of sortedcontainers_pydantic class, return it
-        return parsed
-    elif bases & {
-        sortedcontainers.SortedList,
-        sortedcontainers.SortedDict,
-        sortedcontainers.SortedSet,
-    }:
-        # Subclass of sortedcontainers class, return it
-        return parsed
-    else:
-        raise TypeError(
-            "Expected SortedList, SortedDict, SortedSet or a subclass "
-            f"from sortedcontainers or sortedcontainers_pydantic. Got: {parsed}"
-        )
-
-
 @dataclass(frozen=True)
 class Key:
-    key: Callable[[Any], SupportsRichComparison]
+    key: Callable[[Any], "SupportsRichComparison"]
 
     def __get_pydantic_core_schema__(
         self, source_type: Any, handler: GetCoreSchemaHandler
