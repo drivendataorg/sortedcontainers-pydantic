@@ -1,9 +1,9 @@
 from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 
 from pydantic import BaseModel, TypeAdapter
-import sortedcontainers
+import sortedcontainers as sc
 
-import sortedcontainers_pydantic
+import sortedcontainers_pydantic as sc_p
 
 
 class ReusableIterable:
@@ -17,9 +17,9 @@ class ReusableIterable:
 
 
 def test_sorted_dict():
-    ta = TypeAdapter(sortedcontainers_pydantic.SortedDict)
+    ta = TypeAdapter(sc_p.SortedDict)
 
-    expected = sortedcontainers.SortedDict({"c": 1, "a": 2, "b": 3})
+    expected = sc.SortedDict({"c": 1, "a": 2, "b": 3})
 
     cases = [
         expected,
@@ -33,56 +33,62 @@ def test_sorted_dict():
 
     for annotation in (
         # sortedcontainers_pydantic subclass
-        sortedcontainers_pydantic.SortedDict,
-        sortedcontainers_pydantic.SortedDict[str, int],
-        Optional[sortedcontainers_pydantic.SortedDict],
-        Optional[sortedcontainers_pydantic.SortedDict[str, int]],
+        sc_p.SortedDict,
+        sc_p.SortedDict[str, int],
+        Optional[sc_p.SortedDict],
+        Optional[sc_p.SortedDict[str, int]],
         # annotation
-        sortedcontainers_pydantic.AnnotatedSortedDict,
-        sortedcontainers_pydantic.AnnotatedSortedDict[str, int],
+        sc_p.AnnotatedSortedDict,
+        sc_p.AnnotatedSortedDict[str, int],
+        # manual annotation
+        Annotated[sc.SortedDict, sc_p.SortedDictPydanticAnnotation],
+        Annotated[sc.SortedDict[str, int], sc_p.SortedDictPydanticAnnotation],
     ):
         ta = TypeAdapter(annotation)
         for case in cases:
             print(f"annotation: {annotation}, case: {case}")
             actual = ta.validate_python(case)
-            assert isinstance(actual, sortedcontainers.SortedDict)
+            assert isinstance(actual, sc.SortedDict)
             assert actual == expected
         assert ta.dump_json(expected).decode() == '{"a":2,"b":3,"c":1}'
 
+    assert TypeAdapter(sc_p.SortedDict).json_schema() == TypeAdapter(dict).json_schema()
     assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedDict).json_schema()
-        == TypeAdapter(dict).json_schema()
-    )
-    assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedDict[str, int]).json_schema()
+        TypeAdapter(sc_p.SortedDict[str, int]).json_schema()
         == TypeAdapter(Dict[str, int]).json_schema()
     )
     assert (
-        TypeAdapter(Optional[sortedcontainers_pydantic.SortedDict]).json_schema()
+        TypeAdapter(Optional[sc_p.SortedDict]).json_schema()
         == TypeAdapter(Optional[dict]).json_schema()
     )
     assert (
-        TypeAdapter(Optional[sortedcontainers_pydantic.SortedDict[str, int]]).json_schema()
+        TypeAdapter(Optional[sc_p.SortedDict[str, int]]).json_schema()
         == TypeAdapter(Optional[Dict[str, int]]).json_schema()
     )
 
     class MyModel(BaseModel):
-        sorted_dict: sortedcontainers_pydantic.SortedDict
+        sorted_dict: sc_p.SortedDict
 
     class MyModelWithArg(BaseModel):
-        sorted_dict: sortedcontainers_pydantic.SortedDict[str, int]
+        sorted_dict: sc_p.SortedDict[str, int]
 
     class MyModelWithOptional(BaseModel):
-        sorted_dict: Optional[sortedcontainers_pydantic.SortedDict]
+        sorted_dict: Optional[sc_p.SortedDict]
 
     class MyModelWithOptionalWithArg(BaseModel):
-        sorted_dict: Optional[sortedcontainers_pydantic.SortedDict[str, int]]
+        sorted_dict: Optional[sc_p.SortedDict[str, int]]
 
     class MyModelWithAnnotated(BaseModel):
-        sorted_dict: sortedcontainers_pydantic.AnnotatedSortedDict
+        sorted_dict: sc_p.AnnotatedSortedDict
 
     class MyModelWithAnnotatedWithArg(BaseModel):
-        sorted_dict: sortedcontainers_pydantic.AnnotatedSortedDict[str, int]
+        sorted_dict: sc_p.AnnotatedSortedDict[str, int]
+
+    class MyModelManualAnnotation(BaseModel):
+        sorted_dict: Annotated[sc.SortedDict, sc_p.SortedDictPydanticAnnotation]
+
+    class MyModelManualAnnotationWithArg(BaseModel):
+        sorted_dict: Annotated[sc.SortedDict[str, int], sc_p.SortedDictPydanticAnnotation]
 
     for model in (
         MyModel,
@@ -91,38 +97,43 @@ def test_sorted_dict():
         MyModelWithOptionalWithArg,
         MyModelWithAnnotated,
         MyModelWithAnnotatedWithArg,
+        MyModelManualAnnotation,
+        MyModelManualAnnotationWithArg,
     ):
         for case in cases:
             print(f"model: {model}, case: {case}")
             instance = MyModel(sorted_dict=case)
-            assert isinstance(instance.sorted_dict, sortedcontainers.SortedDict)
+            assert isinstance(instance.sorted_dict, sc.SortedDict)
             assert instance.sorted_dict == expected
             assert instance.model_dump_json() == '{"sorted_dict":{"a":2,"b":3,"c":1}}'
 
 
 def test_sorted_dict_with_key():
-    expected = sortedcontainers.SortedDict({"c": 1, "a": 2, "b": 3}, key=lambda x: -x)
+    expected = sc.SortedDict({"c": 1, "a": 2, "b": 3}, key=lambda x: -x)
 
     annotations = (
         # sortedcontainers_pydantic subclass
-        sortedcontainers_pydantic.SortedDict,
-        sortedcontainers_pydantic.SortedDict[str, int],
-        Optional[sortedcontainers_pydantic.SortedDict],
-        Optional[sortedcontainers_pydantic.SortedDict[str, int]],
+        sc_p.SortedDict,
+        sc_p.SortedDict[str, int],
+        Optional[sc_p.SortedDict],
+        Optional[sc_p.SortedDict[str, int]],
         # annotation
-        sortedcontainers_pydantic.AnnotatedSortedDict,
-        sortedcontainers_pydantic.AnnotatedSortedDict[str, int],
+        sc_p.AnnotatedSortedDict,
+        sc_p.AnnotatedSortedDict[str, int],
+        # manual annotation
+        Annotated[sc.SortedDict, sc_p.SortedDictPydanticAnnotation],
+        Annotated[sc.SortedDict[str, int], sc_p.SortedDictPydanticAnnotation],
     )
 
     for annotation in annotations:
-        ta = TypeAdapter(Annotated[annotation, sortedcontainers_pydantic.Key(lambda x: -x)])
+        ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda x: -x)])
 
         ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
         tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
 
 
 def test_sorted_list():
-    expected = sortedcontainers.SortedList([3, 1, 2])
+    expected = sc.SortedList([3, 1, 2])
 
     cases = [
         expected,
@@ -137,72 +148,93 @@ def test_sorted_list():
 
     for annotation in (
         # sortedcontainers_pydantic subclasses
-        sortedcontainers_pydantic.SortedList,
-        sortedcontainers_pydantic.SortedList[int],
+        sc_p.SortedList,
+        sc_p.SortedList[int],
         # annotations
-        sortedcontainers_pydantic.AnnotatedSortedList,
-        sortedcontainers_pydantic.AnnotatedSortedList[int],
+        sc_p.AnnotatedSortedList,
+        sc_p.AnnotatedSortedList[int],
+        # manual annotation
+        Annotated[sc.SortedList, sc_p.SortedListPydanticAnnotation],
+        Annotated[sc.SortedList[int], sc_p.SortedListPydanticAnnotation],
     ):
         ta = TypeAdapter(annotation)
         for case in cases:
             print(f"annotation: {annotation}, case: {case}")
             actual = ta.validate_python(case)
-            assert isinstance(actual, sortedcontainers.SortedList)
+            assert isinstance(actual, sc.SortedList)
             assert actual == expected
 
         assert ta.dump_json(expected).decode() == "[1,2,3]"
 
+    assert TypeAdapter(sc_p.SortedList).json_schema() == TypeAdapter(list).json_schema()
+    assert TypeAdapter(sc_p.SortedList[int]).json_schema() == TypeAdapter(List[int]).json_schema()
     assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedList).json_schema()
-        == TypeAdapter(list).json_schema()
+        TypeAdapter(Optional[sc_p.SortedList]).json_schema()
+        == TypeAdapter(Optional[list]).json_schema()
     )
     assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedList[int]).json_schema()
-        == TypeAdapter(List[int]).json_schema()
+        TypeAdapter(Optional[sc_p.SortedList[int]]).json_schema()
+        == TypeAdapter(Optional[List[int]]).json_schema()
     )
 
     class MyModel(BaseModel):
-        sorted_list: sortedcontainers_pydantic.SortedList
+        sorted_list: sc_p.SortedList
 
     class MyModelWithArg(BaseModel):
-        sorted_list: sortedcontainers_pydantic.SortedList[int]
+        sorted_list: sc_p.SortedList[int]
 
     class MyModelWithAnnotated(BaseModel):
-        sorted_list: sortedcontainers_pydantic.AnnotatedSortedList
+        sorted_list: sc_p.AnnotatedSortedList
 
     class MyModelWithAnnotatedWithArg(BaseModel):
-        sorted_list: sortedcontainers_pydantic.AnnotatedSortedList[int]
+        sorted_list: sc_p.AnnotatedSortedList[int]
 
-    for model in (MyModel, MyModelWithArg, MyModelWithAnnotated, MyModelWithAnnotatedWithArg):
+    class MyModelManualAnnotation(BaseModel):
+        sorted_list: Annotated[sc.SortedList, sc_p.SortedListPydanticAnnotation]
+
+    class MyModelManualAnnotationWithArg(BaseModel):
+        sorted_list: Annotated[sc.SortedList[int], sc_p.SortedListPydanticAnnotation]
+
+    for model in (
+        MyModel,
+        MyModelWithArg,
+        MyModelWithAnnotated,
+        MyModelWithAnnotatedWithArg,
+        MyModelManualAnnotation,
+        MyModelManualAnnotationWithArg,
+    ):
         for case in cases:
             print(f"model: {model}, case: {case}")
             instance = MyModel(sorted_list=case)
-            assert isinstance(instance.sorted_list, sortedcontainers.SortedList)
+            assert isinstance(instance.sorted_list, sc.SortedList)
             assert instance.sorted_list == expected
             assert instance.model_dump_json() == '{"sorted_list":[1,2,3]}'
 
 
 def test_sorted_list_with_key():
-    expected = sortedcontainers.SortedList([3, 1, 2], key=lambda x: -x)
+    expected = sc.SortedList([3, 1, 2], key=lambda x: -x)
 
     annotations = (
         # sortedcontainers_pydantic subclass
-        sortedcontainers_pydantic.SortedList,
-        sortedcontainers_pydantic.SortedList[int],
+        sc_p.SortedList,
+        sc_p.SortedList[int],
         # annotation
-        sortedcontainers_pydantic.AnnotatedSortedList,
-        sortedcontainers_pydantic.AnnotatedSortedList[int],
+        sc_p.AnnotatedSortedList,
+        sc_p.AnnotatedSortedList[int],
+        # manual annotation
+        Annotated[sc.SortedList, sc_p.SortedListPydanticAnnotation],
+        Annotated[sc.SortedList[int], sc_p.SortedListPydanticAnnotation],
     )
 
     for annotation in annotations:
-        ta = TypeAdapter(Annotated[annotation, sortedcontainers_pydantic.Key(lambda x: -x)])
+        ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda x: -x)])
 
         ta.validate_python([3, 1, 2]) == expected
         tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
 
 
 def test_sorted_set():
-    expected = sortedcontainers.SortedSet([3, 1, 2])
+    expected = sc.SortedSet([3, 1, 2])
 
     cases = [
         expected,
@@ -217,65 +249,86 @@ def test_sorted_set():
 
     for annotation in (
         # sortedcontainers_pydantic subclass
-        sortedcontainers_pydantic.SortedSet,
-        sortedcontainers_pydantic.SortedSet[int],
+        sc_p.SortedSet,
+        sc_p.SortedSet[int],
         # annotation
-        sortedcontainers_pydantic.AnnotatedSortedSet,
-        sortedcontainers_pydantic.AnnotatedSortedSet[int],
+        sc_p.AnnotatedSortedSet,
+        sc_p.AnnotatedSortedSet[int],
+        # manual annotation
+        Annotated[sc.SortedSet, sc_p.SortedSetPydanticAnnotation],
+        Annotated[sc.SortedSet[int], sc_p.SortedSetPydanticAnnotation],
     ):
         ta = TypeAdapter(annotation)
         for case in cases:
             print(f"annotation: {annotation}, case: {case}")
             actual = ta.validate_python(case)
-            assert isinstance(actual, sortedcontainers.SortedSet)
+            assert isinstance(actual, sc.SortedSet)
             assert actual == expected
 
         assert ta.dump_json(expected).decode() == "[1,2,3]"
 
+    assert TypeAdapter(sc_p.SortedSet).json_schema() == TypeAdapter(set).json_schema()
+    assert TypeAdapter(sc_p.SortedSet[int]).json_schema() == TypeAdapter(Set[int]).json_schema()
     assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedSet).json_schema()
-        == TypeAdapter(set).json_schema()
+        TypeAdapter(Optional[sc_p.SortedSet]).json_schema()
+        == TypeAdapter(Optional[set]).json_schema()
     )
     assert (
-        TypeAdapter(sortedcontainers_pydantic.SortedSet[int]).json_schema()
-        == TypeAdapter(Set[int]).json_schema()
+        TypeAdapter(Optional[sc_p.SortedSet[int]]).json_schema()
+        == TypeAdapter(Optional[Set[int]]).json_schema()
     )
 
     class MyModel(BaseModel):
-        sorted_set: sortedcontainers_pydantic.SortedSet
+        sorted_set: sc_p.SortedSet
 
     class MyModelWithArg(BaseModel):
-        sorted_set: sortedcontainers_pydantic.SortedSet[int]
+        sorted_set: sc_p.SortedSet[int]
 
     class MyModelWithAnnotated(BaseModel):
-        sorted_set: sortedcontainers_pydantic.AnnotatedSortedSet
+        sorted_set: sc_p.AnnotatedSortedSet
 
     class MyModelWithAnnotatedWithArg(BaseModel):
-        sorted_set: sortedcontainers_pydantic.AnnotatedSortedSet[int]
+        sorted_set: sc_p.AnnotatedSortedSet[int]
 
-    for model in (MyModel, MyModelWithArg, MyModelWithAnnotated, MyModelWithAnnotatedWithArg):
+    class MyModelManualAnnotation(BaseModel):
+        sorted_set: Annotated[sc.SortedSet, sc_p.SortedSetPydanticAnnotation]
+
+    class MyModelManualAnnotationWithArg(BaseModel):
+        sorted_set: Annotated[sc.SortedSet[int], sc_p.SortedSetPydanticAnnotation]
+
+    for model in (
+        MyModel,
+        MyModelWithArg,
+        MyModelWithAnnotated,
+        MyModelWithAnnotatedWithArg,
+        MyModelManualAnnotation,
+        MyModelManualAnnotationWithArg,
+    ):
         for case in cases:
             print(f"model: {model}, case: {case}")
             instance = MyModel(sorted_set=case)
-            assert isinstance(instance.sorted_set, sortedcontainers.SortedSet)
+            assert isinstance(instance.sorted_set, sc.SortedSet)
             assert instance.sorted_set == expected
             assert instance.model_dump_json() == '{"sorted_set":[1,2,3]}'
 
 
 def test_sorted_set_with_key():
-    expected = sortedcontainers.SortedSet([3, 1, 2], key=lambda x: -x)
+    expected = sc.SortedSet([3, 1, 2], key=lambda x: -x)
 
     annotations = (
         # sortedcontainers_pydantic subclass
-        sortedcontainers_pydantic.SortedSet,
-        sortedcontainers_pydantic.SortedSet[int],
+        sc_p.SortedSet,
+        sc_p.SortedSet[int],
         # annotation
-        sortedcontainers_pydantic.AnnotatedSortedSet,
-        sortedcontainers_pydantic.AnnotatedSortedSet[int],
+        sc_p.AnnotatedSortedSet,
+        sc_p.AnnotatedSortedSet[int],
+        # manual annotation
+        Annotated[sc.SortedSet, sc_p.SortedSetPydanticAnnotation],
+        Annotated[sc.SortedSet[int], sc_p.SortedSetPydanticAnnotation],
     )
 
     for annotation in annotations:
-        ta = TypeAdapter(Annotated[annotation, sortedcontainers_pydantic.Key(lambda x: -x)])
+        ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda x: -x)])
 
         ta.validate_python([3, 1, 2]) == expected
         tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
