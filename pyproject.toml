@@ -1,30 +1,27 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "sortedcontainers-pydantic"
-dynamic = ["version"]
+version = "1.1.0"
 description = "Pydantic support for the sortedcontainers package."
 readme = "README.md"
 authors = [
-    { name = "DrivenData", email = "info@drivendata.org" },
-    { name = "Jay Qi", email = "jayqi.opensource@gmail.com" },
+  { name = "DrivenData", email = "info@drivendata.org" },
+  { name = "Jay Qi", email = "jayqi.opensource@gmail.com" },
 ]
 license = { text = "MIT License" }
 keywords = ["sorted", "sorteddict", "sortedlist", "sortedset", "pydantic"]
 classifiers = [
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Framework :: Pydantic",
-    "Framework :: Pydantic :: 2",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Framework :: Pydantic",
+  "Framework :: Pydantic :: 2",
 ]
 requires-python = '>=3.8'
 dependencies = ["pydantic>=2", "pydantic-core", "sortedcontainers"]
@@ -37,8 +34,29 @@ tests = ["pytest>=6"]
 "Repository" = "https://github.com/jayqi/sortedcontainers-pydantic"
 "Bug Tracker" = "https://github.com/jayqi/sortedcontainers-pydantic/issues"
 
-[tool.hatch.version]
-path = "sortedcontainers_pydantic/__init__.py"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+## DEVELOPMENT ##
+
+[dependency-groups]
+dev = [
+  { include-group = "lint" },
+  "vspect",
+]
+lint = [
+  "ruff",
+]
+tests = [
+  "coverage",
+  "pytest>6",
+  "pytest-cov",
+]
+typecheck = [
+  "mypy",
+  "sortedcontainers-stubs",
+]
 
 ## TOOLS ##
 
@@ -48,9 +66,9 @@ exclude = ["example.py"]
 
 [tool.ruff.lint]
 select = [
-    "E", # Pyflakes
-    "F", # Pycodestyle
-    "I", # isort
+  "E", # Pyflakes
+  "F", # Pycodestyle
+  "I", # isort
 ]
 unfixable = ["F"]
 
@@ -66,3 +84,9 @@ plugins = ["pydantic.mypy"]
 minversion = "6.0"
 addopts = "--cov=sortedcontainers_pydantic --cov-report=term --cov-report=html --cov-report=xml -v"
 testpaths = ["tests"]
+
+[tool.coverage.paths]
+typenames = [
+  "sortedcontainers_pydantic/",
+  "*/site-packages/sortedcontainers_pydantic/"
+]
