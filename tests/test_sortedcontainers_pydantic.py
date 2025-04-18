@@ -1,9 +1,36 @@
 from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 
 from pydantic import BaseModel, TypeAdapter
+import pytest
 import sortedcontainers as sc
 
 import sortedcontainers_pydantic as sc_p
+
+
+def test_get_constructor():
+    sc_p._get_constructor(sc.SortedDict) == sc.SortedDict
+    sc_p._get_constructor(sc.SortedDict[str, int]) == sc.SortedDict
+    sc_p._get_constructor(sc.SortedList) == sc.SortedList
+    sc_p._get_constructor(sc.SortedList[int]) == sc.SortedList
+    sc_p._get_constructor(sc.SortedSet) == sc.SortedSet
+    sc_p._get_constructor(sc.SortedSet[int]) == sc.SortedSet
+    sc_p._get_constructor(sc_p.SortedDict) == sc.SortedDict
+    sc_p._get_constructor(sc_p.SortedDict[str, int]) == sc.SortedDict
+    sc_p._get_constructor(sc_p.SortedList) == sc.SortedList
+    sc_p._get_constructor(sc_p.SortedList[int]) == sc.SortedList
+    sc_p._get_constructor(sc_p.SortedSet) == sc.SortedSet
+    sc_p._get_constructor(sc_p.SortedSet[int]) == sc.SortedSet
+
+    # Test with a custom subclass
+    class CustomSortedDict(sc.SortedDict): ...
+
+    sc_p._get_constructor(CustomSortedDict) == CustomSortedDict
+    sc_p._get_constructor(CustomSortedDict[str, int]) == CustomSortedDict
+
+    class CustomSCPSortedDict(sc_p.SortedDict): ...
+
+    sc_p._get_constructor(CustomSCPSortedDict) == CustomSCPSortedDict
+    sc_p._get_constructor(CustomSCPSortedDict[str, int]) == CustomSCPSortedDict
 
 
 class ReusableIterable:
@@ -35,8 +62,6 @@ def test_sorted_dict():
         # sortedcontainers_pydantic subclass
         sc_p.SortedDict,
         sc_p.SortedDict[str, int],
-        Optional[sc_p.SortedDict],
-        Optional[sc_p.SortedDict[str, int]],
         # annotation
         sc_p.AnnotatedSortedDict,
         sc_p.AnnotatedSortedDict[str, int],
@@ -51,6 +76,27 @@ def test_sorted_dict():
             assert isinstance(actual, sc.SortedDict)
             assert actual == expected
         assert ta.dump_json(expected).decode() == '{"a":2,"b":3,"c":1}'
+
+        # Works inside Optional
+        ta = TypeAdapter(Optional[annotation])
+        for case in cases:
+            print(f"annotation: {annotation}, case: {case}")
+            actual = ta.validate_python(case)
+            assert isinstance(actual, sc.SortedDict)
+            assert actual == expected
+            assert ta.validate_python(None) is None
+        assert ta.dump_json(expected).decode() == '{"a":2,"b":3,"c":1}'
+
+        # Works inside list
+        ta = TypeAdapter(list[annotation])
+        for case in cases:
+            case = [case]
+            print(f"annotation: {annotation}, case: {case}")
+            actual = ta.validate_python(case)
+            assert isinstance(actual, list)
+            assert isinstance(actual[0], sc.SortedDict)
+            assert actual == [expected]
+        assert ta.dump_json([expected]).decode() == '[{"a":2,"b":3,"c":1}]'
 
     assert TypeAdapter(sc_p.SortedDict).json_schema() == TypeAdapter(dict).json_schema()
     assert (
@@ -115,8 +161,6 @@ def test_sorted_dict_with_key():
         # sortedcontainers_pydantic subclass
         sc_p.SortedDict,
         sc_p.SortedDict[str, int],
-        Optional[sc_p.SortedDict],
-        Optional[sc_p.SortedDict[str, int]],
         # annotation
         sc_p.AnnotatedSortedDict,
         sc_p.AnnotatedSortedDict[str, int],
@@ -130,6 +174,16 @@ def test_sorted_dict_with_key():
 
         ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
         tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
+
+        # Wrap in Optional
+        ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -x)]])
+        ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
+        tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
+        assert ta.validate_python(None) is None
+
+        # Wrap in list
+        ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -x)]])
+        ta.validate_python([{"c": 1, "a": 2, "b": 3}]) == [expected]
 
 
 def test_sorted_list():
@@ -163,8 +217,28 @@ def test_sorted_list():
             actual = ta.validate_python(case)
             assert isinstance(actual, sc.SortedList)
             assert actual == expected
-
         assert ta.dump_json(expected).decode() == "[1,2,3]"
+
+        # Works inside Optional
+        ta = TypeAdapter(Optional[annotation])
+        for case in cases:
+            print(f"annotation: {annotation}, case: {case}")
+            actual = ta.validate_python(case)
+            assert isinstance(actual, sc.SortedList)
+            assert actual == expected
+            assert ta.validate_python(None) is None
+        assert ta.dump_json(expected).decode() == "[1,2,3]"
+
+        # Works inside list
+        ta = TypeAdapter(list[annotation])
+        for case in cases:
+            case = [case]
+            print(f"annotation: {annotation}, case: {case}")
+            actual = ta.validate_python(case)
+            assert isinstance(actual, list)
+            assert isinstance(actual[0], sc.SortedList)
+            assert actual == [expected]
+        assert ta.dump_json([expected]).decode() == "[[1,2,3]]"
 
     assert TypeAdapter(sc_p.SortedList).json_schema() == TypeAdapter(list).json_schema()
     assert TypeAdapter(sc_p.SortedList[int]).json_schema() == TypeAdapter(List[int]).json_schema()
@@ -232,6 +306,15 @@ def test_sorted_list_with_key():
         ta.validate_python([3, 1, 2]) == expected
         tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
 
+        # Wrap in Optional
+        ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -x)]])
+        ta.validate_python([3, 1, 2]) == expected
+        assert ta.validate_python(None) is None
+
+        # Wrap in list
+        ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -x)]])
+        ta.validate_python([[3, 1, 2]]) == [expected]
+
 
 def test_sorted_set():
     expected = sc.SortedSet([3, 1, 2])
@@ -264,8 +347,28 @@ def test_sorted_set():
             actual = ta.validate_python(case)
             assert isinstance(actual, sc.SortedSet)
             assert actual == expected
-
         assert ta.dump_json(expected).decode() == "[1,2,3]"
+
+        # Works inside Optional
+        ta = TypeAdapter(Optional[annotation])
+        for case in cases:
+            print(f"annotation: {annotation}, case: {case}")
+            actual = ta.validate_python(case)
+            assert isinstance(actual, sc.SortedSet)
+            assert actual == expected
+            assert ta.validate_python(None) is None
+        assert ta.dump_json(expected).decode() == "[1,2,3]"
+
+        # Works inside list
+        ta = TypeAdapter(list[annotation])
+        for case in cases:
+            case = [case]
+            print(f"annotation: {annotation}, case: {case}")
+            actual = ta.validate_python(case)
+            assert isinstance(actual, list)
+            assert isinstance(actual[0], sc.SortedSet)
+            assert actual == [expected]
+        assert ta.dump_json([expected]).decode() == "[[1,2,3]]"
 
     assert TypeAdapter(sc_p.SortedSet).json_schema() == TypeAdapter(set).json_schema()
     assert TypeAdapter(sc_p.SortedSet[int]).json_schema() == TypeAdapter(Set[int]).json_schema()
@@ -332,3 +435,27 @@ def test_sorted_set_with_key():
 
         ta.validate_python([3, 1, 2]) == expected
         tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
+
+        # Wrap in Optional
+        ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -x)]])
+        ta.validate_python([3, 1, 2]) == expected
+        assert ta.validate_python(None) is None
+
+        # Wrap in list
+        ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -x)]])
+        ta.validate_python([[3, 1, 2]]) == [expected]
+
+
+def test_annotation_with_bad_source_type():
+    for annotation in (
+        sc_p.SortedDictPydanticAnnotation,
+        sc_p.SortedListPydanticAnnotation,
+        sc_p.SortedSetPydanticAnnotation,
+    ):
+        with pytest.raises(sc_p.UnsupportedSourceTypeError):
+            TypeAdapter(Annotated[list, annotation])
+
+
+def test_key_with_bad_source_type():
+    with pytest.raises(sc_p.UnsupportedSourceTypeError):
+        TypeAdapter(Annotated[dict, sc_p.Key(lambda x: x)])

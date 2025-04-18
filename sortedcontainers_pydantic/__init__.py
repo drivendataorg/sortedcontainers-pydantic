@@ -12,7 +12,6 @@ from typing import (
     Set,
     Tuple,
     TypeVar,
-    Union,
     get_args,
     get_origin,
 )
@@ -36,49 +35,40 @@ _OrderableT = TypeVar("_OrderableT", bound="SupportsRichComparison")
 _HashableT = TypeVar("_HashableT", bound=Hashable)
 
 
-class UnsupportedSourceType(TypeError):
+class _UnsupportedSourceTypeError(Exception):
+    def __init__(self, parsed):
+        self.parsed = parsed
+
+
+class UnsupportedSourceTypeError(TypeError):
     pass
-
-
-def _parse_annotation(tp: Any) -> Any:
-    """Parse a type annotation to get the relevant source type we care about, e.g., SortedList from
-    SortedList[int] or from Optional[SortedList[int]].
-    """
-    origin = get_origin(tp)
-    if origin is None:
-        # Direct case, e.g., SortedList
-        return tp
-    elif origin is Union:
-        # Optional or Union case, e.g., Optional[SortedList]
-        # Iterate through args
-        for arg in get_args(tp):
-            if arg is not type(None):
-                return _parse_annotation(arg)
-    else:
-        # Generic case, e.g., SortedList[int]
-        return _parse_annotation(origin)
 
 
 def _get_constructor(tp: Any) -> Any:
     """Get the relevant class constructor for the given type annotation, e.g., SortedList from
-    SortedList[int] or from Optional[SortedList[int]].
+    SortedList[int] or appropriate subclass.
     """
-    parsed = _parse_annotation(tp)
-    if parsed is SortedList:
-        return SortedKeyList
+    # Parse the annotation to get the relevant source type, e.g., SortedList form SortedList[int]
+    origin = get_origin(tp)
+    if origin is None:
+        parsed = tp
+    else:
+        parsed = origin
+
     bases = set((parsed,) + getattr(parsed, "__bases__", tuple()))
-    if bases & {SortedList, SortedDict, SortedSet}:
-        # Subclass of sortedcontainers_pydantic class, return it
-        return parsed
-    elif bases & {
+    if bases & {
+        # Subclasses of sortedcontainers_pydantic
+        SortedList,
+        SortedDict,
+        SortedSet,
+        # Subclasses of sortedcontainers
         sortedcontainers.SortedList,
         sortedcontainers.SortedDict,
         sortedcontainers.SortedSet,
     }:
-        # Subclass of sortedcontainers class, return it
         return parsed
     else:
-        raise UnsupportedSourceType
+        raise _UnsupportedSourceTypeError(parsed)
 
 
 class SortedDictPydanticAnnotation:
@@ -99,7 +89,14 @@ class SortedDictPydanticAnnotation:
         """
         if cls is SortedDictPydanticAnnotation:
             # Used as annotation, i.e., Annotated[..., SortedDictPydanticAnnotation]
-            cls = _get_constructor(source_type)
+            try:
+                cls = _get_constructor(source_type)
+            except _UnsupportedSourceTypeError as e:
+                msg = (
+                    "Expected subclass of sortedcontainers.SortedDict, "
+                    f"got '{e.parsed}' parsed from annotation '{source_type}'."
+                )
+                raise UnsupportedSourceTypeError(msg) from e
 
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
@@ -169,7 +166,14 @@ class SortedListPydanticAnnotation:
         """
         if cls is SortedListPydanticAnnotation:
             # Used as annotation, e.g., Annotated[..., SortedListPydanticAnnotation]
-            cls = _get_constructor(source_type)
+            try:
+                cls = _get_constructor(source_type)
+            except _UnsupportedSourceTypeError as e:
+                msg = (
+                    "Expected subclass of sortedcontainers.SortedList, "
+                    f"got '{e.parsed}' parsed from annotation '{source_type}'."
+                )
+                raise UnsupportedSourceTypeError(msg) from e
 
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
@@ -238,7 +242,14 @@ class SortedSetPydanticAnnotation:
         """
         if cls is SortedSetPydanticAnnotation:
             # Used as annotation, i.e., Annotated[..., SortedSetPydanticAnnotation]
-            cls = _get_constructor(source_type)
+            try:
+                cls = _get_constructor(source_type)
+            except _UnsupportedSourceTypeError as e:
+                msg = (
+                    "Expected subclass of sortedcontainers.SortedSet, "
+                    f"got '{e.parsed}' parsed from annotation '{source_type}'."
+                )
+                raise UnsupportedSourceTypeError(msg) from e
 
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
@@ -295,7 +306,19 @@ class Key:
     def __get_pydantic_core_schema__(
         self, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        constructor = partial(_get_constructor(source_type), key=self.key)
+        try:
+            constructor = _get_constructor(source_type)
+        except _UnsupportedSourceTypeError as e:
+            msg = (
+                "Expected subclass of a sortedcontainers or sortedcontainers_pydantic class, "
+                f"got '{e.parsed}' parsed from annotation '{source_type}'."
+            )
+            raise UnsupportedSourceTypeError(msg) from e
+        # sortedcontainers.SortedList has magic behavior where the SortedList constructor returns
+        # SortedKeyList if given a key. We match that behavior for our SortedList.
+        if constructor is SortedList:
+            constructor = SortedKeyList
         return core_schema.no_info_after_validator_function(
-            function=constructor, schema=handler(source_type)
+            function=partial(constructor, key=self.key),
+            schema=handler(source_type),
         )
