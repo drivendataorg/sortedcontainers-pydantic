@@ -56,6 +56,7 @@ def test_sorted_dict():
         ReusableIterable(lambda: [("c", 1), ("a", 2), ("b", 3)]),
     ]
     coercion_cases = [
+        sc.SortedDict([("c", 1.0), ("a", 2.0), ("b", 3.0)]),
         {"c": 1.0, "a": 2.0, "b": 3.0},
     ]
 
@@ -193,7 +194,7 @@ def test_sorted_dict_with_key():
 def test_sorted_list():
     expected = sc.SortedList([3, 1, 2])
 
-    cases = [
+    base_cases = [
         expected,
         [1, 2, 3],
         [3, 2, 1],
@@ -203,19 +204,24 @@ def test_sorted_list():
         range(3, 0, -1),
         [2, 3, 1],
     ]
+    coercion_cases = [
+        sc.SortedList([3.0, 1.0, 2.0]),
+        [2.0, 3.0, 1.0],
+    ]
 
-    for annotation in (
+    for annotation, coerces in (
         # sortedcontainers_pydantic subclasses
-        sc_p.SortedList,
-        sc_p.SortedList[int],
+        (sc_p.SortedList, False),
+        (sc_p.SortedList[int], True),
         # annotations
-        sc_p.AnnotatedSortedList,
-        sc_p.AnnotatedSortedList[int],
+        (sc_p.AnnotatedSortedList, False),
+        (sc_p.AnnotatedSortedList[int], True),
         # manual annotation
-        Annotated[sc.SortedList, sc_p.SortedListPydanticAnnotation],
-        Annotated[sc.SortedList[int], sc_p.SortedListPydanticAnnotation],
+        (Annotated[sc.SortedList, sc_p.SortedListPydanticAnnotation], False),
+        (Annotated[sc.SortedList[int], sc_p.SortedListPydanticAnnotation], True),
     ):
         ta = TypeAdapter(annotation)
+        cases = base_cases + (coercion_cases if coerces else [])
         for case in cases:
             print(f"annotation: {annotation}, case: {case}")
             actual = ta.validate_python(case)
@@ -273,17 +279,18 @@ def test_sorted_list():
     class MyModelManualAnnotationWithArg(BaseModel):
         sorted_list: Annotated[sc.SortedList[int], sc_p.SortedListPydanticAnnotation]
 
-    for model in (
-        MyModel,
-        MyModelWithArg,
-        MyModelWithAnnotated,
-        MyModelWithAnnotatedWithArg,
-        MyModelManualAnnotation,
-        MyModelManualAnnotationWithArg,
+    for model, coerces in (
+        (MyModel, False),
+        (MyModelWithArg, True),
+        (MyModelWithAnnotated, False),
+        (MyModelWithAnnotatedWithArg, True),
+        (MyModelManualAnnotation, False),
+        (MyModelManualAnnotationWithArg, True),
     ):
+        cases = base_cases + (coercion_cases if coerces else [])
         for case in cases:
             print(f"model: {model}, case: {case}")
-            instance = MyModel(sorted_list=case)
+            instance = model(sorted_list=case)
             assert isinstance(instance.sorted_list, sc.SortedList)
             assert instance.sorted_list == expected
             assert instance.model_dump_json() == '{"sorted_list":[1,2,3]}'
@@ -323,7 +330,7 @@ def test_sorted_list_with_key():
 def test_sorted_set():
     expected = sc.SortedSet([3, 1, 2])
 
-    cases = [
+    base_cases = [
         expected,
         [3, 1, 2],
         [1, 2, 3],
@@ -333,19 +340,24 @@ def test_sorted_set():
         range(3, 0, -1),
         [2, 3, 1],
     ]
+    coercion_cases = [
+        sc.SortedSet([3.0, 1.0, 2.0]),
+        [2.0, 3.0, 1.0],
+    ]
 
-    for annotation in (
+    for annotation, coerces in (
         # sortedcontainers_pydantic subclass
-        sc_p.SortedSet,
-        sc_p.SortedSet[int],
+        (sc_p.SortedSet, False),
+        (sc_p.SortedSet[int], True),
         # annotation
-        sc_p.AnnotatedSortedSet,
-        sc_p.AnnotatedSortedSet[int],
+        (sc_p.AnnotatedSortedSet, False),
+        (sc_p.AnnotatedSortedSet[int], True),
         # manual annotation
-        Annotated[sc.SortedSet, sc_p.SortedSetPydanticAnnotation],
-        Annotated[sc.SortedSet[int], sc_p.SortedSetPydanticAnnotation],
+        (Annotated[sc.SortedSet, sc_p.SortedSetPydanticAnnotation], False),
+        (Annotated[sc.SortedSet[int], sc_p.SortedSetPydanticAnnotation], True),
     ):
         ta = TypeAdapter(annotation)
+        cases = base_cases + (coercion_cases if coerces else [])
         for case in cases:
             print(f"annotation: {annotation}, case: {case}")
             actual = ta.validate_python(case)
@@ -403,17 +415,18 @@ def test_sorted_set():
     class MyModelManualAnnotationWithArg(BaseModel):
         sorted_set: Annotated[sc.SortedSet[int], sc_p.SortedSetPydanticAnnotation]
 
-    for model in (
-        MyModel,
-        MyModelWithArg,
-        MyModelWithAnnotated,
-        MyModelWithAnnotatedWithArg,
-        MyModelManualAnnotation,
-        MyModelManualAnnotationWithArg,
+    for model, coerces in (
+        (MyModel, False),
+        (MyModelWithArg, True),
+        (MyModelWithAnnotated, False),
+        (MyModelWithAnnotatedWithArg, True),
+        (MyModelManualAnnotation, False),
+        (MyModelManualAnnotationWithArg, True),
     ):
+        cases = base_cases + (coercion_cases if coerces else [])
         for case in cases:
             print(f"model: {model}, case: {case}")
-            instance = MyModel(sorted_set=case)
+            instance = model(sorted_set=case)
             assert isinstance(instance.sorted_set, sc.SortedSet)
             assert instance.sorted_set == expected
             assert instance.model_dump_json() == '{"sorted_set":[1,2,3]}'

@@ -137,11 +137,13 @@ class SortedDictPydanticAnnotation:
 
         # Union of the two schemas
         python_schema = core_schema.union_schema(
-            [
-                instance_schema,
+            # Only include instance_schema if there are no type arguments
+            # Otherwise an existing instance with wrong argument types won't be coerced
+            ([] if args else [instance_schema])
+            + [
                 from_mapping_schema,
                 from_iterable_of_pairs_schema,
-            ]
+            ],
         )
 
         as_dict_serializer = core_schema.plain_serializer_function_ser_schema(dict)
@@ -206,8 +208,10 @@ class SortedListPydanticAnnotation:
 
         # Union of the two schemas
         python_schema = core_schema.union_schema(
-            [
-                instance_schema,
+            # Only include instance_schema if there are no type arguments
+            # Otherwise an existing instance with wrong argument types won't be coerced
+            ([] if args else [instance_schema])
+            + [
                 from_iterable_schema,
             ]
         )
@@ -289,8 +293,10 @@ class SortedSetPydanticAnnotation:
 
         # Union of the two schemas
         python_schema = core_schema.union_schema(
-            [
-                instance_schema,
+            # Only include instance_schema if there are no type arguments
+            # Otherwise an existing instance with wrong argument types won't be coerced
+            ([] if args else [instance_schema])
+            + [
                 from_set_schema,
                 from_iterable_schema,
             ]
