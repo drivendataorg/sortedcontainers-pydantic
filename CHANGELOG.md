@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.0.0 (Unreleased)
+## v2.0.0 (2025-04-18)
 
 - Added `SortedDictPydanticAnnotation`, `SortedListPydanticAnnotation`, and `SortedSetPydanticAnnotation` special annotation objects. These can be attached to sortedcontainers' original classes using `typing.Annotated` to enable Pydantic validation and serialization. See [approach 2](./README.md#2-use-the-annotation-pattern) in the README for further details.
 - Added `AnnotatedSortedDict`, `AnnotatedSortedList`, and `AnnotatedSortedSet` type aliases that can also be used to enable Pydantic validation and serialization. See [approach 3](./README.md#3-use-the-wrapper-type-aliases) in the README for further details.
