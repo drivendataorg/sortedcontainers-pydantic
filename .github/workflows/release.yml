@@ -95,6 +95,8 @@ jobs:
     needs: upload-to-prod-pypi
     if: github.event.inputs.dry-run == 'false'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
