@@ -87,5 +87,10 @@ testpaths = ["tests"]
 [tool.coverage.paths]
 typenames = [
   "sortedcontainers_pydantic/",
-  "*/site-packages/sortedcontainers_pydantic/"
+  "*/site-packages/sortedcontainers_pydantic/",
+]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
 ]
