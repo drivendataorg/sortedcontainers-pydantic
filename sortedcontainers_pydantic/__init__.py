@@ -28,6 +28,21 @@ if TYPE_CHECKING:
 
 __version__ = importlib.metadata.version("sortedcontainers-pydantic")
 
+__all__ = [
+    "SortedDict",
+    "SortedList",
+    "SortedSet",
+    "SortedKeyList",
+    "SortedDictPydanticAnnotation",
+    "SortedListPydanticAnnotation",
+    "SortedSetPydanticAnnotation",
+    "AnnotatedSortedDict",
+    "AnnotatedSortedList",
+    "AnnotatedSortedSet",
+    "Key",
+    "UnsupportedSourceTypeError",
+]
+
 _KT = TypeVar("_KT", bound=Hashable)  # Key type.
 _VT = TypeVar("_VT")  # Value type.
 _T = TypeVar("_T")
