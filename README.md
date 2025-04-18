@@ -156,7 +156,7 @@ from pydantic import BaseModel
 from sortedcontainers_pydantic import AnnotatedSortedList, Key
 
 class MyModel(BaseModel):
-    sorted_list: Annotated[AnnotatedSortedList, Key(lambda x: -x)]
+    sorted_list: Annotated[AnnotatedSortedList[int], Key(lambda x: -x)]
 
 MyModel(sorted_list=[3.0, 1.0, 2.0])
 #> MyModel(sorted_list=SortedKeyList([3, 2, 1], key=<function MyModel.<lambda> at 0x10ca65080>))
