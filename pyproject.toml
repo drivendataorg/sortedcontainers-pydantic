@@ -42,6 +42,7 @@ build-backend = "hatchling.build"
 [dependency-groups]
 dev = [
   { include-group = "lint" },
+  "ipython",
   "vspect",
 ]
 lint = [
