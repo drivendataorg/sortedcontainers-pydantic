@@ -1,6 +1,7 @@
 # sortedcontainers-pydantic
 
 [![PyPI](https://img.shields.io/pypi/v/sortedcontainers-pydantic.svg)](https://pypi.org/project/sortedcontainers-pydantic/)
+[![conda-forge feedstock](https://img.shields.io/conda/vn/conda-forge/sortedcontainers-pydantic.svg)](https://github.com/conda-forge/sortedcontainers-pydantic-feedstock)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/sortedcontainers-pydantic)](https://pypi.org/project/sortedcontainers-pydantic/)
 [![tests](https://github.com/drivendataorg/sortedcontainers-pydantic/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/drivendataorg/sortedcontainers-pydantic/actions/workflows/tests.yml?query=branch%3Amain)
 [![codecov](https://codecov.io/gh/drivendataorg/sortedcontainers-pydantic/branch/main/graph/badge.svg)](https://codecov.io/gh/drivendataorg/sortedcontainers-pydantic)
@@ -44,6 +45,12 @@ sortedcontainers-pydantic is available on [PyPI](https://pypi.org/project/sorted
 
 ```bash
 pip install sortedcontainers-pydantic
+```
+
+It is also available on [conda-forge](https://github.com/conda-forge/sortedcontainers-pydantic-feedstock). You can install it with
+
+```bash
+conda install sortedcontainers-pydantic --channel conda-forge
 ```
 
 ## Usage approaches
