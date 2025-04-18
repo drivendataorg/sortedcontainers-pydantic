@@ -43,6 +43,7 @@ build-backend = "hatchling.build"
 dev = [
   { include-group = "lint" },
   "ipython",
+  "reprexlite",
   "vspect",
 ]
 lint = [
