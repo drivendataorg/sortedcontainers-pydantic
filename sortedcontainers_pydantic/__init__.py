@@ -144,7 +144,6 @@ class SortedDictPydanticAnnotation:
             ]
         )
 
-        # Serializer that converts an instance to a dict
         as_dict_serializer = core_schema.plain_serializer_function_ser_schema(dict)
 
         return core_schema.json_or_python_schema(

@@ -44,11 +44,9 @@ class ReusableIterable:
 
 
 def test_sorted_dict():
-    ta = TypeAdapter(sc_p.SortedDict)
-
     expected = sc.SortedDict({"c": 1, "a": 2, "b": 3})
 
-    cases = [
+    base_cases = [
         expected,
         {"c": 1, "a": 2, "b": 3},
         [("c", 1), ("a", 2), ("b", 3)],
@@ -57,19 +55,23 @@ def test_sorted_dict():
         {("c", 1), ("a", 2), ("b", 3)},
         ReusableIterable(lambda: [("c", 1), ("a", 2), ("b", 3)]),
     ]
+    coercion_cases = [
+        {"c": 1.0, "a": 2.0, "b": 3.0},
+    ]
 
-    for annotation in (
+    for annotation, coerces in (
         # sortedcontainers_pydantic subclass
-        sc_p.SortedDict,
-        sc_p.SortedDict[str, int],
+        (sc_p.SortedDict, False),
+        (sc_p.SortedDict[str, int], True),
         # annotation
-        sc_p.AnnotatedSortedDict,
-        sc_p.AnnotatedSortedDict[str, int],
+        (sc_p.AnnotatedSortedDict, False),
+        (sc_p.AnnotatedSortedDict[str, int], True),
         # manual annotation
-        Annotated[sc.SortedDict, sc_p.SortedDictPydanticAnnotation],
-        Annotated[sc.SortedDict[str, int], sc_p.SortedDictPydanticAnnotation],
+        (Annotated[sc.SortedDict, sc_p.SortedDictPydanticAnnotation], False),
+        (Annotated[sc.SortedDict[str, int], sc_p.SortedDictPydanticAnnotation], True),
     ):
         ta = TypeAdapter(annotation)
+        cases = base_cases + (coercion_cases if coerces else [])
         for case in cases:
             print(f"annotation: {annotation}, case: {case}")
             actual = ta.validate_python(case)
@@ -136,19 +138,20 @@ def test_sorted_dict():
     class MyModelManualAnnotationWithArg(BaseModel):
         sorted_dict: Annotated[sc.SortedDict[str, int], sc_p.SortedDictPydanticAnnotation]
 
-    for model in (
-        MyModel,
-        MyModelWithArg,
-        MyModelWithOptional,
-        MyModelWithOptionalWithArg,
-        MyModelWithAnnotated,
-        MyModelWithAnnotatedWithArg,
-        MyModelManualAnnotation,
-        MyModelManualAnnotationWithArg,
+    for model, coerces in (
+        (MyModel, False),
+        (MyModelWithArg, True),
+        (MyModelWithOptional, False),
+        (MyModelWithOptionalWithArg, True),
+        (MyModelWithAnnotated, False),
+        (MyModelWithAnnotatedWithArg, True),
+        (MyModelManualAnnotation, False),
+        (MyModelManualAnnotationWithArg, True),
     ):
+        cases = base_cases + (coercion_cases if coerces else [])
         for case in cases:
             print(f"model: {model}, case: {case}")
-            instance = MyModel(sorted_dict=case)
+            instance = model(sorted_dict=case)
             assert isinstance(instance.sorted_dict, sc.SortedDict)
             assert instance.sorted_dict == expected
             assert instance.model_dump_json() == '{"sorted_dict":{"a":2,"b":3,"c":1}}'
@@ -174,6 +177,7 @@ def test_sorted_dict_with_key():
 
         ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
         tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
+        ta.validate_python({"c": 1.0, "a": 2.0, "b": 3.0}) == expected
 
         # Wrap in Optional
         ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -x)]])
