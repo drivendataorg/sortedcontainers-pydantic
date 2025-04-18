@@ -61,7 +61,7 @@ from sortedcontainers_pydantic import SortedList
 class MyModel(BaseModel):
     sorted_list: SortedList[int]
 
-MyModel(sorted_list=[3, 1, 2])
+MyModel(sorted_list=[3.0, 1.0, 2.0])
 #> MyModel(sorted_list=SortedList([1, 2, 3]))
 
 MyModel.model_validate_json('{"sorted_list": [3, 1, 2]}')
@@ -84,7 +84,7 @@ from sortedcontainers_pydantic import SortedListPydanticAnnotation
 class MyModel(BaseModel):
     sorted_list: Annotated[SortedList[int], SortedListPydanticAnnotation]
 
-MyModel(sorted_list=[3, 1.0, 2])
+MyModel(sorted_list=[3.0, 1.0, 2.0])
 #> MyModel(sorted_list=SortedList([1, 2, 3]))
 ```
 
@@ -104,10 +104,10 @@ AnnotatedSortedList
 #> typing.Annotated[sortedcontainers.sortedlist.SortedList[~_T], <class 'sortedcontainers_pydantic.SortedListPydanticAnnotation'>]
 
 class MyModel(BaseModel):
-    sorted_list: AnnotatedSortedList
+    sorted_list: AnnotatedSortedList[int]
 
-MyModel(sorted_list=[3, 1.0, 2])
-#> MyModel(sorted_list=SortedList([1.0, 2, 3]))
+MyModel(sorted_list=[3.0, 1.0, 2.0])
+#> MyModel(sorted_list=SortedList([1, 2, 3]))
 ```
 
 ## Specifying a key function with `Key`
