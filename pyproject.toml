@@ -29,9 +29,9 @@ dependencies = ["pydantic>=2", "pydantic-core", "sortedcontainers"]
 tests = ["pytest>=6"]
 
 [project.urls]
-"Homepage" = "https://github.com/jayqi/sortedcontainers-pydantic/"
-"Repository" = "https://github.com/jayqi/sortedcontainers-pydantic"
-"Bug Tracker" = "https://github.com/jayqi/sortedcontainers-pydantic/issues"
+"Homepage" = "https://github.com/drivendataorg/sortedcontainers-pydantic/"
+"Repository" = "https://github.com/drivendataorg/sortedcontainers-pydantic"
+"Bug Tracker" = "https://github.com/drivendataorg/sortedcontainers-pydantic/issues"
 
 [build-system]
 requires = ["hatchling"]
