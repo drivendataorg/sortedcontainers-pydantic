@@ -53,6 +53,17 @@ It is also available on [conda-forge](https://github.com/conda-forge/sortedconta
 conda install sortedcontainers-pydantic --channel conda-forge
 ```
 
+### Static type checking
+
+If you use a static type checker such as mypy, you may also need
+[`sortedcontainers-stubs`](https://github.com/h4l/sortedcontainers-stubs).
+It provides type information for the underlying `sortedcontainers` classes
+and is only needed for type checking, not at runtime.
+
+```bash
+pip install sortedcontainers-stubs
+```
+
 ## Usage approaches
 
 There are three different ways you can use `sortedcontainers-pydantic`.
