@@ -58,14 +58,6 @@ jobs:
         run: |
           just python=${{ matrix.python-version }} test
 
-      - name: Upload coverage to codecov
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: ${{ (github.event_name == 'push' && true) || (github.event_name == 'pull_request' && true) || false }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-
 
   notify:
     name: Notify failed build

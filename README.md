@@ -4,7 +4,6 @@
 [![conda-forge feedstock](https://img.shields.io/conda/vn/conda-forge/sortedcontainers-pydantic.svg)](https://github.com/conda-forge/sortedcontainers-pydantic-feedstock)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/sortedcontainers-pydantic)](https://pypi.org/project/sortedcontainers-pydantic/)
 [![tests](https://github.com/drivendataorg/sortedcontainers-pydantic/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/drivendataorg/sortedcontainers-pydantic/actions/workflows/tests.yml?query=branch%3Amain)
-[![codecov](https://codecov.io/gh/drivendataorg/sortedcontainers-pydantic/branch/main/graph/badge.svg)](https://codecov.io/gh/drivendataorg/sortedcontainers-pydantic)
 
 This package extends [sortedcontainers](https://github.com/grantjenks/python-sortedcontainers/), a fast pure-Python library for sorted mutable collections, to work with [Pydantic](https://docs.pydantic.dev/latest/)'s models, validation, and serialization.
 
