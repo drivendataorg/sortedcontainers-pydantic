@@ -1,17 +1,17 @@
 [project]
 name = "sortedcontainers-pydantic"
-version = "2.0.0"
+version = "2.1.0"
 description = "Pydantic support for the sortedcontainers package."
 readme = "README.md"
 authors = [
   { name = "DrivenData", email = "info@drivendata.org" },
   { name = "Jay Qi", email = "jayqi.opensource@gmail.com" },
 ]
-license = { text = "MIT License" }
+license = "MIT"
+license-files = ["LICENSE"]
 keywords = ["sorted", "sorteddict", "sortedlist", "sortedset", "pydantic"]
 classifiers = [
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
@@ -34,8 +34,8 @@ tests = ["pytest>=6"]
 "Bug Tracker" = "https://github.com/drivendataorg/sortedcontainers-pydantic/issues"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.13.0,<0.14.0"]
+build-backend = "uv_build"
 
 ## DEVELOPMENT ##
 
@@ -60,6 +60,9 @@ typecheck = [
 ]
 
 ## TOOLS ##
+
+[tool.uv]
+exclude-newer = "7 days"
 
 [tool.ruff]
 line-length = 99
