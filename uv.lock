@@ -1391,6 +1391,9 @@ typecheck = [
     { name = "mypy" },
     { name = "sortedcontainers-stubs" },
 ]
+vspect = [
+    { name = "vspect" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1416,6 +1419,7 @@ typecheck = [
     { name = "mypy" },
     { name = "sortedcontainers-stubs" },
 ]
+vspect = [{ name = "vspect" }]
 
 [[package]]
 name = "sortedcontainers-stubs"
