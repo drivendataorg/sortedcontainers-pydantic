@@ -2,6 +2,9 @@
 
 ## v2.1.0 (Unreleased)
 
+- Removed support for Python 3.9.
+- Added support for Python 3.14 and 3.15.
+- Removed the `tests` optional dependency extra, which only listed pytest.
 - Changed the source distribution to contain only the package source, `pyproject.toml`, README, and LICENSE. It previously also included tests and other repository files. This is a result of changing the build backend from hatchling to uv_build.
 
 ## v2.0.0 (2025-04-18)
