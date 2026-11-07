@@ -14,19 +14,17 @@ classifiers = [
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Framework :: Pydantic",
   "Framework :: Pydantic :: 2",
 ]
-requires-python = '>=3.9'
+requires-python = '>=3.10'
 dependencies = ["pydantic>=2", "pydantic-core", "sortedcontainers"]
-
-[project.optional-dependencies]
-tests = ["pytest>=6"]
 
 [project.urls]
 "Homepage" = "https://github.com/drivendataorg/sortedcontainers-pydantic/"
@@ -67,7 +65,7 @@ exclude-newer = "7 days"
 [tool.ruff]
 line-length = 99
 src = ["src", "tests"]
-exclude = ["example.py"]
+exclude = ["example.py", "*.md"]
 
 [tool.ruff.lint]
 select = [

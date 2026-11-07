@@ -234,7 +234,7 @@ class SortedKeyList(sortedcontainers.SortedKeyList[_T, _OrderableT], SortedList[
     pass
 
 
-AnnotatedSortedList = Annotated[sortedcontainers.SortedList[_T], SortedListPydanticAnnotation]  # type: ignore[misc]
+AnnotatedSortedList = Annotated[sortedcontainers.SortedList[_T], SortedListPydanticAnnotation]
 
 # Don't define AnnotatedSortedKeyList
 # We generally don't expect people to directly use SortedKeyList in a field definition
