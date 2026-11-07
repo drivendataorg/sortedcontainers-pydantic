@@ -1,5 +1,9 @@
 # Changelog
 
+## v2.1.0 (Unreleased)
+
+- Changed the source distribution to contain only the package source, `pyproject.toml`, README, and LICENSE. It previously also included tests and other repository files. This is a result of changing the build backend from hatchling to uv_build.
+
 ## v2.0.0 (2025-04-18)
 
 - Added `SortedDictPydanticAnnotation`, `SortedListPydanticAnnotation`, and `SortedSetPydanticAnnotation` special annotation objects. These can be attached to sortedcontainers' original classes using `typing.Annotated` to enable Pydantic validation and serialization. See [approach 2](./README.md#2-use-the-annotation-pattern) in the README for further details.
