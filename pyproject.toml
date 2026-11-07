@@ -42,7 +42,7 @@ dev = [
   { include-group = "lint" },
   "ipython",
   "reprexlite",
-  "vspect",
+  { include-group = "vspect" },
 ]
 lint = [
   "ruff",
@@ -55,6 +55,9 @@ tests = [
 typecheck = [
   "mypy",
   "sortedcontainers-stubs",
+]
+vspect = [
+  "vspect",
 ]
 
 ## TOOLS ##
