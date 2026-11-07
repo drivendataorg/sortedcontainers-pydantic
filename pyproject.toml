@@ -63,6 +63,7 @@ typecheck = [
 
 [tool.ruff]
 line-length = 99
+src = ["src", "tests"]
 exclude = ["example.py"]
 
 [tool.ruff.lint]
@@ -74,11 +75,10 @@ select = [
 unfixable = ["F"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["sortedcontainers_pydantic"]
 force-sort-within-sections = true
 
 [tool.mypy]
-files = ["sortedcontainers_pydantic", "tests/typechecks.py", "example.py"]
+files = ["src/sortedcontainers_pydantic", "tests/typechecks.py", "example.py"]
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
@@ -87,8 +87,9 @@ addopts = "--cov=sortedcontainers_pydantic --cov-report=term --cov-report=html -
 testpaths = ["tests"]
 
 [tool.coverage.paths]
-typenames = [
-  "sortedcontainers_pydantic/",
+sortedcontainers_pydantic = [
+  "src/sortedcontainers_pydantic/",
+  "*/src/sortedcontainers_pydantic/",
   "*/site-packages/sortedcontainers_pydantic/",
 ]
 
