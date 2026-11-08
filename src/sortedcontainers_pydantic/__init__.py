@@ -249,6 +249,18 @@ AnnotatedSortedList = Annotated[sortedcontainers.SortedList[_T], SortedListPydan
 # They should use SortedList instead
 
 
+class _UniqueItems:
+    """Annotation that marks the items of an array JSON schema as unique."""
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        json_schema = handler.resolve_ref_schema(handler(schema))
+        json_schema["uniqueItems"] = True
+        return json_schema
+
+
 class SortedSetPydanticAnnotation:
     @classmethod
     def __get_pydantic_core_schema__(
@@ -285,11 +297,11 @@ class SortedSetPydanticAnnotation:
         if args:
             set_t_schema = handler.generate_schema(Set[args[0]])  # type: ignore[valid-type]
             iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore[valid-type]
-            list_t_schema = handler.generate_schema(List[args[0]])  # type: ignore[valid-type]
+            list_t_schema = handler.generate_schema(Annotated[List[args[0]], _UniqueItems])  # type: ignore[valid-type]
         else:
             set_t_schema = handler.generate_schema(Set)
             iterable_t_schema = handler.generate_schema(Iterable)
-            list_t_schema = handler.generate_schema(List)
+            list_t_schema = handler.generate_schema(Annotated[List, _UniqueItems])
 
         # Schema for when the input is a set
         from_set_schema = core_schema.no_info_after_validator_function(
@@ -312,7 +324,7 @@ class SortedSetPydanticAnnotation:
             )
 
         # Serializer that converts an instance to a list, using the schema for the item type to
-        # serialize the items. A list keeps the sorted order, which a set would not.
+        # serialize the items
         as_list_serializer = core_schema.plain_serializer_function_ser_schema(
             list, return_schema=list_t_schema
         )
@@ -322,18 +334,6 @@ class SortedSetPydanticAnnotation:
             python_schema=python_schema,
             serialization=as_list_serializer,
         )
-
-    @classmethod
-    def __get_pydantic_json_schema__(
-        cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
-    ) -> JsonSchemaValue:
-        """Marks the items as unique in the serialization JSON schema, which is otherwise
-        generated from the serializer's list return schema."""
-        json_schema = handler(schema)
-        if handler.mode == "serialization":
-            json_schema = handler.resolve_ref_schema(json_schema)
-            json_schema["uniqueItems"] = True
-        return json_schema
 
 
 class SortedSet(sortedcontainers.SortedSet[_HashableT], SortedSetPydanticAnnotation):

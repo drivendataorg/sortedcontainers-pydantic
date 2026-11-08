@@ -494,6 +494,12 @@ def test_item_serializers():
     for annotation, value, expected_json, expected_python in (
         # sortedcontainers_pydantic subclasses
         (sc_p.SortedDict[str, IntAsStr], sorted_dict, '{"a":"1","b":"2"}', {"a": "1", "b": "2"}),
+        (
+            sc_p.SortedDict[IntAsStr, int],
+            sc.SortedDict({2: 1, 1: 2}),
+            '{"1":2,"2":1}',
+            {"1": 2, "2": 1},
+        ),
         (sc_p.SortedList[IntAsStr], sorted_list, '["1","2"]', ["1", "2"]),
         (sc_p.SortedSet[IntAsStr], sorted_set, '["1","2"]', ["1", "2"]),
         # annotations
@@ -526,8 +532,20 @@ def test_item_serializers():
         ),
         # with key
         (
+            Annotated[sc_p.SortedDict[str, IntAsStr], sc_p.Key(lambda x: -ord(x))],
+            sc.SortedDict(lambda x: -ord(x), {"a": 1, "b": 2}),
+            '{"b":"2","a":"1"}',
+            {"b": "2", "a": "1"},
+        ),
+        (
             Annotated[sc_p.SortedList[IntAsStr], sc_p.Key(lambda x: -x)],
             sc.SortedKeyList([1, 2], key=lambda x: -x),
+            '["2","1"]',
+            ["2", "1"],
+        ),
+        (
+            Annotated[sc_p.SortedSet[IntAsStr], sc_p.Key(lambda x: -x)],
+            sc.SortedSet([1, 2], key=lambda x: -x),
             '["2","1"]',
             ["2", "1"],
         ),
@@ -539,6 +557,8 @@ def test_item_serializers():
 
 
 def test_serialization_json_schema():
+    as_str = PlainSerializer(lambda x: str(list(x)), return_type=str)
+
     for annotation, reference in (
         # sortedcontainers_pydantic subclasses
         (sc_p.SortedDict, dict),
@@ -561,6 +581,11 @@ def test_serialization_json_schema():
         # wrapped
         (Optional[sc_p.SortedSet[IntAsStr]], Optional[Set[IntAsStr]]),
         (Annotated[sc_p.SortedSet[IntAsStr], sc_p.Key(lambda x: -x)], Set[IntAsStr]),
+        # serializer replaced
+        (Annotated[sc_p.SortedDict[str, int], as_str], Annotated[Dict[str, int], as_str]),
+        (Annotated[sc_p.SortedList[int], as_str], Annotated[List[int], as_str]),
+        (Annotated[sc_p.SortedSet[int], as_str], Annotated[Set[int], as_str]),
+        (Annotated[sc_p.AnnotatedSortedSet[int], as_str], Annotated[Set[int], as_str]),
     ):
         print(f"annotation: {annotation}")
         assert TypeAdapter(annotation).json_schema(mode="serialization") == TypeAdapter(
