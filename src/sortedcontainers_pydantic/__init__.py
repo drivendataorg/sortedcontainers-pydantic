@@ -70,17 +70,10 @@ def _get_constructor(tp: Any) -> Any:
     else:
         parsed = origin
 
-    bases = set((parsed,) + getattr(parsed, "__bases__", tuple()))
-    if bases & {
-        # Subclasses of sortedcontainers_pydantic
-        SortedList,
-        SortedDict,
-        SortedSet,
-        # Subclasses of sortedcontainers
-        sortedcontainers.SortedList,
-        sortedcontainers.SortedDict,
-        sortedcontainers.SortedSet,
-    }:
+    if isinstance(parsed, type) and issubclass(
+        parsed,
+        (sortedcontainers.SortedList, sortedcontainers.SortedDict, sortedcontainers.SortedSet),
+    ):
         return parsed
     else:
         raise _UnsupportedSourceTypeError(parsed)

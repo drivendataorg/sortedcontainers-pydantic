@@ -32,6 +32,26 @@ def test_get_constructor():
     assert sc_p._get_constructor(CustomSCPSortedDict) is CustomSCPSortedDict
     assert sc_p._get_constructor(CustomSCPSortedDict[str, int]) is CustomSCPSortedDict
 
+    # Test with subclasses and subclasses of subclasses
+    for base in (
+        sc.SortedDict,
+        sc.SortedList,
+        sc.SortedKeyList,
+        sc.SortedSet,
+        sc_p.SortedDict,
+        sc_p.SortedList,
+        sc_p.SortedKeyList,
+        sc_p.SortedSet,
+    ):
+
+        class Child(base): ...
+
+        class Grandchild(Child): ...
+
+        assert sc_p._get_constructor(Child) is Child
+        assert sc_p._get_constructor(Grandchild) is Grandchild
+        assert sc_p._get_constructor(Grandchild[int]) is Grandchild
+
 
 class ReusableIterable:
     """Utility iterable class that can be used multiple times without exhausting."""
@@ -463,6 +483,105 @@ def test_sorted_set_with_key():
         assert ta.validate_python([[3, 1, 2]]) == [expected]
 
 
+def test_subclass_of_subclass():
+    class ChildSortedDict(sc.SortedDict): ...
+
+    class GrandchildSortedDict(ChildSortedDict): ...
+
+    class ChildSortedList(sc.SortedList): ...
+
+    class GrandchildSortedList(ChildSortedList): ...
+
+    class ChildSortedKeyList(sc.SortedKeyList): ...
+
+    class GrandchildSortedKeyList(ChildSortedKeyList): ...
+
+    class ChildSortedSet(sc.SortedSet): ...
+
+    class GrandchildSortedSet(ChildSortedSet): ...
+
+    class ChildSCPSortedDict(sc_p.SortedDict): ...
+
+    class GrandchildSCPSortedDict(ChildSCPSortedDict): ...
+
+    class ChildSCPSortedKeyList(sc_p.SortedKeyList): ...
+
+    class GrandchildSCPSortedKeyList(ChildSCPSortedKeyList): ...
+
+    class ChildSCPSortedSet(sc_p.SortedSet): ...
+
+    class GrandchildSCPSortedSet(ChildSCPSortedSet): ...
+
+    def reverse(x):
+        return -ord(x)
+
+    for annotation, case, expected_type, expected in (
+        # annotation
+        (
+            Annotated[GrandchildSortedDict, sc_p.SortedDictPydanticAnnotation],
+            {"c": 1, "a": 2, "b": 3},
+            GrandchildSortedDict,
+            ("a", "b", "c"),
+        ),
+        (
+            Annotated[GrandchildSortedList, sc_p.SortedListPydanticAnnotation],
+            ["c", "a", "b"],
+            GrandchildSortedList,
+            ("a", "b", "c"),
+        ),
+        (
+            Annotated[GrandchildSortedSet, sc_p.SortedSetPydanticAnnotation],
+            ["c", "a", "b"],
+            GrandchildSortedSet,
+            ("a", "b", "c"),
+        ),
+        # annotation with key
+        (
+            Annotated[GrandchildSortedDict, sc_p.SortedDictPydanticAnnotation, sc_p.Key(reverse)],
+            {"c": 1, "a": 2, "b": 3},
+            GrandchildSortedDict,
+            ("c", "b", "a"),
+        ),
+        (
+            Annotated[
+                GrandchildSortedKeyList, sc_p.SortedListPydanticAnnotation, sc_p.Key(reverse)
+            ],
+            ["c", "a", "b"],
+            GrandchildSortedKeyList,
+            ("c", "b", "a"),
+        ),
+        (
+            Annotated[GrandchildSortedSet, sc_p.SortedSetPydanticAnnotation, sc_p.Key(reverse)],
+            ["c", "a", "b"],
+            GrandchildSortedSet,
+            ("c", "b", "a"),
+        ),
+        # sortedcontainers_pydantic subclass with key
+        (
+            Annotated[GrandchildSCPSortedDict, sc_p.Key(reverse)],
+            {"c": 1, "a": 2, "b": 3},
+            GrandchildSCPSortedDict,
+            ("c", "b", "a"),
+        ),
+        (
+            Annotated[GrandchildSCPSortedKeyList, sc_p.Key(reverse)],
+            ["c", "a", "b"],
+            GrandchildSCPSortedKeyList,
+            ("c", "b", "a"),
+        ),
+        (
+            Annotated[GrandchildSCPSortedSet, sc_p.Key(reverse)],
+            ["c", "a", "b"],
+            GrandchildSCPSortedSet,
+            ("c", "b", "a"),
+        ),
+    ):
+        print(f"annotation: {annotation}, case: {case}")
+        actual = TypeAdapter(annotation).validate_python(case)
+        assert type(actual) is expected_type
+        assert tuple(actual) == expected
+
+
 def test_annotation_with_bad_source_type():
     for annotation in (
         sc_p.SortedDictPydanticAnnotation,
@@ -471,6 +590,9 @@ def test_annotation_with_bad_source_type():
     ):
         with pytest.raises(sc_p.UnsupportedSourceTypeError):
             TypeAdapter(Annotated[list, annotation])
+        # Source type whose origin is not a class
+        with pytest.raises(sc_p.UnsupportedSourceTypeError):
+            TypeAdapter(Annotated[Optional[sc.SortedList], annotation])
 
 
 def test_key_with_bad_source_type():
