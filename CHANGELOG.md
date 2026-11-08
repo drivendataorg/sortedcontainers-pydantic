@@ -8,6 +8,7 @@
 - Changed the source distribution to contain only the package source, `pyproject.toml`, README, and LICENSE. It previously also included tests and other repository files. This is a result of changing the build backend from hatchling to uv_build.
 - Fixed `Key` with `SortedDict` so that the key function is used to sort keys. It was previously added to the dictionary as an item with key `"key"`.
 - Fixed the special annotation objects and `Key` to support subclasses at any depth below the sortedcontainers classes. Previously, only direct subclasses were supported.
+- Fixed serialization to use the declared item types, consistent with `list[T]` and `dict[K, V]`, so serializers attached to item types now apply. As a result, fields only on a subclass of a declared model item type are no longer included (annotate the item type with `SerializeAsAny`, e.g., `SortedList[SerializeAsAny[Base]]`, to keep them), and items that don't match the declared type emit Pydantic's serializer warning.
 
 ## v2.0.0 (2025-04-18)
 
