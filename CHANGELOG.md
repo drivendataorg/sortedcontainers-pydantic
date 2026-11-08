@@ -8,6 +8,7 @@
 - Changed the source distribution to contain only the package source, `pyproject.toml`, README, and LICENSE. It previously also included tests and other repository files. This is a result of changing the build backend from hatchling to uv_build.
 - Fixed `Key` with `SortedDict` so that the key function is used to sort keys. It was previously added to the dictionary as an item with key `"key"`.
 - Fixed the special annotation objects and `Key` to support subclasses at any depth below the sortedcontainers classes. Previously, only direct subclasses were supported.
+- Fixed serialization to use the serializers of the item types, such as a custom serializer attached with `typing.Annotated`. Previously, items were serialized based on their runtime type.
 
 ## v2.0.0 (2025-04-18)
 

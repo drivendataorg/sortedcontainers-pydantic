@@ -6,8 +6,10 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    Dict,
     Hashable,
     Iterable,
+    List,
     Mapping,
     Set,
     Tuple,
@@ -18,7 +20,9 @@ from typing import (
 
 from pydantic import (
     GetCoreSchemaHandler,
+    GetJsonSchemaHandler,
 )
+from pydantic.json_schema import JsonSchemaValue
 from pydantic_core import core_schema
 import sortedcontainers
 
@@ -114,9 +118,11 @@ class SortedDictPydanticAnnotation:
         if args:
             mapping_t_schema = handler.generate_schema(Mapping[args[0], args[1]])  # type: ignore[valid-type]
             iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[args[0], args[1]]])  # type: ignore[valid-type]
+            dict_t_schema = handler.generate_schema(Dict[args[0], args[1]])  # type: ignore[valid-type]
         else:
             mapping_t_schema = handler.generate_schema(Mapping)
             iterable_of_pairs_t_schema = handler.generate_schema(Iterable[Tuple[Any, Any]])
+            dict_t_schema = handler.generate_schema(Dict)
 
         # Schema for when the input is a mapping
         from_mapping_schema = core_schema.no_info_after_validator_function(
@@ -140,7 +146,11 @@ class SortedDictPydanticAnnotation:
                 [instance_schema, from_mapping_schema, from_iterable_of_pairs_schema]
             )
 
-        as_dict_serializer = core_schema.plain_serializer_function_ser_schema(dict)
+        # Serializer that converts an instance to a dict, using the schema for the key and value
+        # types to serialize the contents
+        as_dict_serializer = core_schema.plain_serializer_function_ser_schema(
+            dict, return_schema=dict_t_schema
+        )
 
         return core_schema.json_or_python_schema(
             json_schema=from_mapping_schema,
@@ -192,8 +202,10 @@ class SortedListPydanticAnnotation:
         args = get_args(source_type)
         if args:
             iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore[valid-type]
+            list_t_schema = handler.generate_schema(List[args[0]])  # type: ignore[valid-type]
         else:
             iterable_t_schema = handler.generate_schema(Iterable)
+            list_t_schema = handler.generate_schema(List)
 
         # Schema for when the input is an iterable
         from_iterable_schema = core_schema.no_info_after_validator_function(
@@ -209,8 +221,11 @@ class SortedListPydanticAnnotation:
         else:
             python_schema = core_schema.union_schema([instance_schema, from_iterable_schema])
 
-        # Serializer that converts an instance to a list
-        as_list_serializer = core_schema.plain_serializer_function_ser_schema(list)
+        # Serializer that converts an instance to a list, using the schema for the item type to
+        # serialize the items
+        as_list_serializer = core_schema.plain_serializer_function_ser_schema(
+            list, return_schema=list_t_schema
+        )
 
         return core_schema.json_or_python_schema(
             json_schema=from_iterable_schema,
@@ -270,9 +285,11 @@ class SortedSetPydanticAnnotation:
         if args:
             set_t_schema = handler.generate_schema(Set[args[0]])  # type: ignore[valid-type]
             iterable_t_schema = handler.generate_schema(Iterable[args[0]])  # type: ignore[valid-type]
+            list_t_schema = handler.generate_schema(List[args[0]])  # type: ignore[valid-type]
         else:
             set_t_schema = handler.generate_schema(Set)
             iterable_t_schema = handler.generate_schema(Iterable)
+            list_t_schema = handler.generate_schema(List)
 
         # Schema for when the input is a set
         from_set_schema = core_schema.no_info_after_validator_function(
@@ -294,14 +311,29 @@ class SortedSetPydanticAnnotation:
                 [instance_schema, from_set_schema, from_iterable_schema]
             )
 
-        # Serializer that converts an instance to a list
-        as_list_serializer = core_schema.plain_serializer_function_ser_schema(list)
+        # Serializer that converts an instance to a list, using the schema for the item type to
+        # serialize the items. A list keeps the sorted order, which a set would not.
+        as_list_serializer = core_schema.plain_serializer_function_ser_schema(
+            list, return_schema=list_t_schema
+        )
 
         return core_schema.json_or_python_schema(
             json_schema=from_set_schema,
             python_schema=python_schema,
             serialization=as_list_serializer,
         )
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> JsonSchemaValue:
+        """Marks the items as unique in the serialization JSON schema, which is otherwise
+        generated from the serializer's list return schema."""
+        json_schema = handler(schema)
+        if handler.mode == "serialization":
+            json_schema = handler.resolve_ref_schema(json_schema)
+            json_schema["uniqueItems"] = True
+        return json_schema
 
 
 class SortedSet(sortedcontainers.SortedSet[_HashableT], SortedSetPydanticAnnotation):

@@ -1,6 +1,6 @@
 from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, PlainSerializer, TypeAdapter
 import pytest
 import sortedcontainers as sc
 
@@ -481,6 +481,91 @@ def test_sorted_set_with_key():
         # Wrap in list
         ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -x)]])
         assert ta.validate_python([[3, 1, 2]]) == [expected]
+
+
+IntAsStr = Annotated[int, PlainSerializer(lambda x: str(x), return_type=str)]
+
+
+def test_item_serializers():
+    sorted_dict = sc.SortedDict({"b": 2, "a": 1})
+    sorted_list = sc.SortedList([2, 1])
+    sorted_set = sc.SortedSet([2, 1])
+
+    for annotation, value, expected_json, expected_python in (
+        # sortedcontainers_pydantic subclasses
+        (sc_p.SortedDict[str, IntAsStr], sorted_dict, '{"a":"1","b":"2"}', {"a": "1", "b": "2"}),
+        (sc_p.SortedList[IntAsStr], sorted_list, '["1","2"]', ["1", "2"]),
+        (sc_p.SortedSet[IntAsStr], sorted_set, '["1","2"]', ["1", "2"]),
+        # annotations
+        (
+            sc_p.AnnotatedSortedDict[str, IntAsStr],
+            sorted_dict,
+            '{"a":"1","b":"2"}',
+            {"a": "1", "b": "2"},
+        ),
+        (sc_p.AnnotatedSortedList[IntAsStr], sorted_list, '["1","2"]', ["1", "2"]),
+        (sc_p.AnnotatedSortedSet[IntAsStr], sorted_set, '["1","2"]', ["1", "2"]),
+        # manual annotations
+        (
+            Annotated[sc.SortedDict[str, IntAsStr], sc_p.SortedDictPydanticAnnotation],
+            sorted_dict,
+            '{"a":"1","b":"2"}',
+            {"a": "1", "b": "2"},
+        ),
+        (
+            Annotated[sc.SortedList[IntAsStr], sc_p.SortedListPydanticAnnotation],
+            sorted_list,
+            '["1","2"]',
+            ["1", "2"],
+        ),
+        (
+            Annotated[sc.SortedSet[IntAsStr], sc_p.SortedSetPydanticAnnotation],
+            sorted_set,
+            '["1","2"]',
+            ["1", "2"],
+        ),
+        # with key
+        (
+            Annotated[sc_p.SortedList[IntAsStr], sc_p.Key(lambda x: -x)],
+            sc.SortedKeyList([1, 2], key=lambda x: -x),
+            '["2","1"]',
+            ["2", "1"],
+        ),
+    ):
+        print(f"annotation: {annotation}, value: {value}")
+        ta = TypeAdapter(annotation)
+        assert ta.dump_json(value).decode() == expected_json
+        assert ta.dump_python(value) == expected_python
+
+
+def test_serialization_json_schema():
+    for annotation, reference in (
+        # sortedcontainers_pydantic subclasses
+        (sc_p.SortedDict, dict),
+        (sc_p.SortedDict[str, IntAsStr], Dict[str, IntAsStr]),
+        (sc_p.SortedList, list),
+        (sc_p.SortedList[IntAsStr], List[IntAsStr]),
+        (sc_p.SortedSet, set),
+        (sc_p.SortedSet[IntAsStr], Set[IntAsStr]),
+        # annotations
+        (sc_p.AnnotatedSortedDict[str, IntAsStr], Dict[str, IntAsStr]),
+        (sc_p.AnnotatedSortedList[IntAsStr], List[IntAsStr]),
+        (sc_p.AnnotatedSortedSet[IntAsStr], Set[IntAsStr]),
+        # manual annotations
+        (
+            Annotated[sc.SortedDict[str, IntAsStr], sc_p.SortedDictPydanticAnnotation],
+            Dict[str, IntAsStr],
+        ),
+        (Annotated[sc.SortedList[IntAsStr], sc_p.SortedListPydanticAnnotation], List[IntAsStr]),
+        (Annotated[sc.SortedSet[IntAsStr], sc_p.SortedSetPydanticAnnotation], Set[IntAsStr]),
+        # wrapped
+        (Optional[sc_p.SortedSet[IntAsStr]], Optional[Set[IntAsStr]]),
+        (Annotated[sc_p.SortedSet[IntAsStr], sc_p.Key(lambda x: -x)], Set[IntAsStr]),
+    ):
+        print(f"annotation: {annotation}")
+        assert TypeAdapter(annotation).json_schema(mode="serialization") == TypeAdapter(
+            reference
+        ).json_schema(mode="serialization")
 
 
 def test_subclass_of_subclass():
