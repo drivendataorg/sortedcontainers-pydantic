@@ -32,6 +32,17 @@ def test_get_constructor():
     assert sc_p._get_constructor(CustomSCPSortedDict) is CustomSCPSortedDict
     assert sc_p._get_constructor(CustomSCPSortedDict[str, int]) is CustomSCPSortedDict
 
+    # Test with a subclass of a custom subclass
+    class GrandchildSortedDict(CustomSortedDict): ...
+
+    assert sc_p._get_constructor(GrandchildSortedDict) is GrandchildSortedDict
+    assert sc_p._get_constructor(GrandchildSortedDict[str, int]) is GrandchildSortedDict
+
+    class GrandchildSCPSortedDict(CustomSCPSortedDict): ...
+
+    assert sc_p._get_constructor(GrandchildSCPSortedDict) is GrandchildSCPSortedDict
+    assert sc_p._get_constructor(GrandchildSCPSortedDict[str, int]) is GrandchildSCPSortedDict
+
 
 class ReusableIterable:
     """Utility iterable class that can be used multiple times without exhausting."""
@@ -471,6 +482,9 @@ def test_annotation_with_bad_source_type():
     ):
         with pytest.raises(sc_p.UnsupportedSourceTypeError):
             TypeAdapter(Annotated[list, annotation])
+        # Source type whose origin is not a class
+        with pytest.raises(sc_p.UnsupportedSourceTypeError):
+            TypeAdapter(Annotated[Optional[sc.SortedList], annotation])
 
 
 def test_key_with_bad_source_type():
