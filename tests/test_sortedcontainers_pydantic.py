@@ -8,29 +8,29 @@ import sortedcontainers_pydantic as sc_p
 
 
 def test_get_constructor():
-    sc_p._get_constructor(sc.SortedDict) == sc.SortedDict
-    sc_p._get_constructor(sc.SortedDict[str, int]) == sc.SortedDict
-    sc_p._get_constructor(sc.SortedList) == sc.SortedList
-    sc_p._get_constructor(sc.SortedList[int]) == sc.SortedList
-    sc_p._get_constructor(sc.SortedSet) == sc.SortedSet
-    sc_p._get_constructor(sc.SortedSet[int]) == sc.SortedSet
-    sc_p._get_constructor(sc_p.SortedDict) == sc.SortedDict
-    sc_p._get_constructor(sc_p.SortedDict[str, int]) == sc.SortedDict
-    sc_p._get_constructor(sc_p.SortedList) == sc.SortedList
-    sc_p._get_constructor(sc_p.SortedList[int]) == sc.SortedList
-    sc_p._get_constructor(sc_p.SortedSet) == sc.SortedSet
-    sc_p._get_constructor(sc_p.SortedSet[int]) == sc.SortedSet
+    assert sc_p._get_constructor(sc.SortedDict) is sc.SortedDict
+    assert sc_p._get_constructor(sc.SortedDict[str, int]) is sc.SortedDict
+    assert sc_p._get_constructor(sc.SortedList) is sc.SortedList
+    assert sc_p._get_constructor(sc.SortedList[int]) is sc.SortedList
+    assert sc_p._get_constructor(sc.SortedSet) is sc.SortedSet
+    assert sc_p._get_constructor(sc.SortedSet[int]) is sc.SortedSet
+    assert sc_p._get_constructor(sc_p.SortedDict) is sc_p.SortedDict
+    assert sc_p._get_constructor(sc_p.SortedDict[str, int]) is sc_p.SortedDict
+    assert sc_p._get_constructor(sc_p.SortedList) is sc_p.SortedList
+    assert sc_p._get_constructor(sc_p.SortedList[int]) is sc_p.SortedList
+    assert sc_p._get_constructor(sc_p.SortedSet) is sc_p.SortedSet
+    assert sc_p._get_constructor(sc_p.SortedSet[int]) is sc_p.SortedSet
 
     # Test with a custom subclass
     class CustomSortedDict(sc.SortedDict): ...
 
-    sc_p._get_constructor(CustomSortedDict) == CustomSortedDict
-    sc_p._get_constructor(CustomSortedDict[str, int]) == CustomSortedDict
+    assert sc_p._get_constructor(CustomSortedDict) is CustomSortedDict
+    assert sc_p._get_constructor(CustomSortedDict[str, int]) is CustomSortedDict
 
     class CustomSCPSortedDict(sc_p.SortedDict): ...
 
-    sc_p._get_constructor(CustomSCPSortedDict) == CustomSCPSortedDict
-    sc_p._get_constructor(CustomSCPSortedDict[str, int]) == CustomSCPSortedDict
+    assert sc_p._get_constructor(CustomSCPSortedDict) is CustomSCPSortedDict
+    assert sc_p._get_constructor(CustomSCPSortedDict[str, int]) is CustomSCPSortedDict
 
 
 class ReusableIterable:
@@ -314,17 +314,17 @@ def test_sorted_list_with_key():
     for annotation in annotations:
         ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda x: -x)])
 
-        ta.validate_python([3, 1, 2]) == expected
-        tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
+        assert ta.validate_python([3, 1, 2]) == expected
+        assert tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
 
         # Wrap in Optional
         ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -x)]])
-        ta.validate_python([3, 1, 2]) == expected
+        assert ta.validate_python([3, 1, 2]) == expected
         assert ta.validate_python(None) is None
 
         # Wrap in list
         ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -x)]])
-        ta.validate_python([[3, 1, 2]]) == [expected]
+        assert ta.validate_python([[3, 1, 2]]) == [expected]
 
 
 def test_sorted_set():
@@ -450,17 +450,17 @@ def test_sorted_set_with_key():
     for annotation in annotations:
         ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda x: -x)])
 
-        ta.validate_python([3, 1, 2]) == expected
-        tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
+        assert ta.validate_python([3, 1, 2]) == expected
+        assert tuple(ta.validate_python([3, 1, 2])) == (3, 2, 1)
 
         # Wrap in Optional
         ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -x)]])
-        ta.validate_python([3, 1, 2]) == expected
+        assert ta.validate_python([3, 1, 2]) == expected
         assert ta.validate_python(None) is None
 
         # Wrap in list
         ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -x)]])
-        ta.validate_python([[3, 1, 2]]) == [expected]
+        assert ta.validate_python([[3, 1, 2]]) == [expected]
 
 
 def test_annotation_with_bad_source_type():
