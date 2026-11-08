@@ -159,7 +159,7 @@ def test_sorted_dict():
 
 
 def test_sorted_dict_with_key():
-    expected = sc.SortedDict({"c": 1, "a": 2, "b": 3}, key=lambda x: -x)
+    expected = sc.SortedDict(lambda x: -ord(x), {"c": 1, "a": 2, "b": 3})
 
     annotations = (
         # sortedcontainers_pydantic subclass
@@ -174,21 +174,21 @@ def test_sorted_dict_with_key():
     )
 
     for annotation in annotations:
-        ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda x: -x)])
+        ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda x: -ord(x))])
 
-        ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
-        tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
-        ta.validate_python({"c": 1.0, "a": 2.0, "b": 3.0}) == expected
+        assert ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
+        assert tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
+        assert ta.validate_python({"c": 1.0, "a": 2.0, "b": 3.0}) == expected
 
         # Wrap in Optional
-        ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -x)]])
-        ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
-        tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
+        ta = TypeAdapter(Optional[Annotated[annotation, sc_p.Key(lambda x: -ord(x))]])
+        assert ta.validate_python({"c": 1, "a": 2, "b": 3}) == expected
+        assert tuple(ta.validate_python([("c", 1), ("a", 2), ("b", 3)]).keys()) == ("c", "b", "a")
         assert ta.validate_python(None) is None
 
         # Wrap in list
-        ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -x)]])
-        ta.validate_python([{"c": 1, "a": 2, "b": 3}]) == [expected]
+        ta = TypeAdapter(list[Annotated[annotation, sc_p.Key(lambda x: -ord(x))]])
+        assert ta.validate_python([{"c": 1, "a": 2, "b": 3}]) == [expected]
 
 
 def test_sorted_list():

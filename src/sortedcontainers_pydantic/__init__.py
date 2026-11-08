@@ -337,7 +337,13 @@ class Key:
         # SortedKeyList if given a key. We match that behavior for our SortedList.
         if constructor is SortedList:
             constructor = SortedKeyList
+        # SortedDict takes the key function as its first positional argument and treats keyword
+        # arguments as items.
+        if issubclass(constructor, sortedcontainers.SortedDict):
+            function = partial(constructor, self.key)
+        else:
+            function = partial(constructor, key=self.key)
         return core_schema.no_info_after_validator_function(
-            function=partial(constructor, key=self.key),
+            function=function,
             schema=handler(source_type),
         )
