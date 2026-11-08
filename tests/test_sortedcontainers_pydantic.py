@@ -1,6 +1,6 @@
 from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 
-from pydantic import BaseModel, PlainSerializer, TypeAdapter
+from pydantic import BaseModel, PlainSerializer, SerializeAsAny, TypeAdapter
 import pytest
 import sortedcontainers as sc
 
@@ -487,9 +487,16 @@ IntAsStr = Annotated[int, PlainSerializer(lambda x: str(x), return_type=str)]
 
 
 def test_item_serializers():
+    class Item(BaseModel):
+        x: int
+
+    class SubItem(Item):
+        y: int
+
     sorted_dict = sc.SortedDict({"b": 2, "a": 1})
     sorted_list = sc.SortedList([2, 1])
     sorted_set = sc.SortedSet([2, 1])
+    sorted_dict_of_sub_items = sc.SortedDict({"a": SubItem(x=1, y=2)})
 
     for annotation, value, expected_json, expected_python in (
         # sortedcontainers_pydantic subclasses
@@ -502,6 +509,7 @@ def test_item_serializers():
         ),
         (sc_p.SortedList[IntAsStr], sorted_list, '["1","2"]', ["1", "2"]),
         (sc_p.SortedSet[IntAsStr], sorted_set, '["1","2"]', ["1", "2"]),
+        (sc_p.SortedKeyList[IntAsStr, int], sc.SortedKeyList([2, 1]), '["1","2"]', ["1", "2"]),
         # annotations
         (
             sc_p.AnnotatedSortedDict[str, IntAsStr],
@@ -548,6 +556,19 @@ def test_item_serializers():
             sc.SortedSet([1, 2], key=lambda x: -x),
             '["2","1"]',
             ["2", "1"],
+        ),
+        # model items are serialized as the declared type
+        (
+            sc_p.SortedDict[str, Item],
+            sorted_dict_of_sub_items,
+            '{"a":{"x":1}}',
+            {"a": {"x": 1}},
+        ),
+        (
+            sc_p.SortedDict[str, SerializeAsAny[Item]],
+            sorted_dict_of_sub_items,
+            '{"a":{"x":1,"y":2}}',
+            {"a": {"x": 1, "y": 2}},
         ),
     ):
         print(f"annotation: {annotation}, value: {value}")

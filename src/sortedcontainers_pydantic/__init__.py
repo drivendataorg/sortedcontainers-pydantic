@@ -250,13 +250,13 @@ AnnotatedSortedList = Annotated[sortedcontainers.SortedList[_T], SortedListPydan
 
 
 class _UniqueItems:
-    """Annotation that marks the items of an array JSON schema as unique."""
+    """Annotation that adds `uniqueItems: true` to an array JSON schema."""
 
     @classmethod
     def __get_pydantic_json_schema__(
         cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
     ) -> JsonSchemaValue:
-        json_schema = handler.resolve_ref_schema(handler(schema))
+        json_schema = handler(schema)
         json_schema["uniqueItems"] = True
         return json_schema
 
