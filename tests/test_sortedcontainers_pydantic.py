@@ -1,6 +1,13 @@
 from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 
-from pydantic import BaseModel, PlainSerializer, SerializeAsAny, TypeAdapter
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    PlainSerializer,
+    PlainValidator,
+    SerializeAsAny,
+    TypeAdapter,
+)
 import pytest
 import sortedcontainers as sc
 
@@ -729,3 +736,74 @@ def test_annotation_with_bad_source_type():
 def test_key_with_bad_source_type():
     with pytest.raises(sc_p.UnsupportedSourceTypeError):
         TypeAdapter(Annotated[dict, sc_p.Key(lambda x: x)])
+
+
+def test_key_orders_models_without_natural_order():
+    class Item(BaseModel):
+        model_config = {"frozen": True}
+        x: int
+
+    def key(item):
+        return item.x
+
+    for annotation in (
+        sc_p.SortedList[Item],
+        sc_p.AnnotatedSortedList[Item],
+        sc_p.SortedKeyList[Item, int],
+        sc_p.SortedSet[Item],
+        sc_p.AnnotatedSortedSet[Item],
+    ):
+        adapter = TypeAdapter(Annotated[annotation, sc_p.Key(key)])
+        for value in ([{"x": 2}, {"x": 1}], [Item(x=2), Item(x=1)]):
+            result = adapter.validate_python(value)
+            assert [item.x for item in result] == [1, 2]
+            assert result.key is key
+            assert adapter.dump_json(result) == b'[{"x":1},{"x":2}]'
+        result = adapter.validate_json('[{"x":2},{"x":1}]')
+        assert [item.x for item in result] == [1, 2]
+
+    for annotation in (sc_p.SortedDict[Item, str], sc_p.AnnotatedSortedDict[Item, str]):
+        adapter = TypeAdapter(Annotated[annotation, sc_p.Key(key)])
+        result = adapter.validate_python({Item(x=2): "two", Item(x=1): "one"})
+        assert [item.x for item in result] == [1, 2]
+        assert list(result.values()) == ["one", "two"]
+
+
+def test_key_replaces_existing_instance_key_without_touching_nested_containers():
+    def reverse(value):
+        return -value
+
+    for annotation, value in (
+        (sc_p.SortedList, sc_p.SortedList([1, 2])),
+        (sc_p.SortedSet, sc_p.SortedSet([1, 2])),
+        (sc_p.SortedDict, sc_p.SortedDict({1: "one", 2: "two"})),
+    ):
+        result = TypeAdapter(Annotated[annotation, sc_p.Key(reverse)]).validate_python(value)
+        assert list(result) == [2, 1]
+        assert result.key is reverse
+        assert list(value) == [1, 2]
+
+    adapter = TypeAdapter(Annotated[sc_p.SortedList[sc_p.SortedList[int]], sc_p.Key(len)])
+    result = adapter.validate_python([[3, 1], [2]])
+    assert [list(item) for item in result] == [[2], [1, 3]]
+
+
+def test_key_preserves_validation_wrappers_and_last_key_wins():
+    calls = []
+
+    def observe(value):
+        assert isinstance(value, sc.SortedList)
+        calls.append(list(value))
+        return value
+
+    reverse = sc_p.Key(lambda value: -value)
+    annotation = Annotated[sc_p.SortedList[int], AfterValidator(observe), reverse]
+    result = TypeAdapter(annotation).validate_python(["1", "2"])
+    assert list(result) == [2, 1]
+    assert calls == [[2, 1]]
+    adapter = TypeAdapter(Annotated[annotation, sc_p.Key(lambda value: value)])
+    assert list(adapter.validate_python([2, 1])) == [1, 2]
+    adapter = TypeAdapter(
+        Annotated[sc_p.SortedList[int], PlainValidator(lambda value: value), reverse]
+    )
+    assert list(adapter.validate_python([1, 2])) == [2, 1]

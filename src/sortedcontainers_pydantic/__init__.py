@@ -14,6 +14,7 @@ from typing import (
     Set,
     Tuple,
     TypeVar,
+    cast,
     get_args,
     get_origin,
 )
@@ -358,6 +359,7 @@ class Key:
                 f"got '{e.parsed}' parsed from annotation '{source_type}'."
             )
             raise UnsupportedSourceTypeError(msg) from e
+        original_constructor = constructor
         # sortedcontainers.SortedList has magic behavior where the SortedList constructor returns
         # SortedKeyList if given a key. We match that behavior for our SortedList.
         if constructor is SortedList:
@@ -368,7 +370,39 @@ class Key:
             function = partial(constructor, self.key)
         else:
             function = partial(constructor, key=self.key)
-        return core_schema.no_info_after_validator_function(
-            function=function,
-            schema=handler(source_type),
-        )
+
+        replaced = False
+
+        def with_key(schema: core_schema.CoreSchema) -> core_schema.CoreSchema:
+            # Change the collection constructor before it can attempt natural
+            # ordering. Only follow validation wrappers, never item schemas:
+            # nested sorted containers keep their own ordering rules.
+            nonlocal replaced
+            validator = schema.get("function", {}).get("function")
+            if schema["type"] == "function-after" and (
+                validator is original_constructor
+                or (isinstance(validator, partial) and validator.func is constructor)
+            ):
+                replaced = True
+                return {**schema, "function": {**schema["function"], "function": function}}
+            if schema["type"] == "is-instance" and schema["cls"] is original_constructor:
+                replaced = True
+                return core_schema.no_info_after_validator_function(function, schema)
+            updated = dict(schema)
+            for name in ("schema", "json_schema", "python_schema"):
+                if name in updated:
+                    updated[name] = with_key(updated[name])
+            if schema["type"] == "union":
+                updated["choices"] = [
+                    (with_key(choice[0]), choice[1])
+                    if isinstance(choice, tuple)
+                    else with_key(choice)
+                    for choice in schema["choices"]
+                ]
+            return cast(core_schema.CoreSchema, updated)
+
+        schema = with_key(handler(source_type))
+        if not replaced:
+            # A custom validator may replace the entire collection schema.
+            return core_schema.no_info_after_validator_function(function, schema)
+        return schema
