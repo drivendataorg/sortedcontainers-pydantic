@@ -2,6 +2,8 @@
 
 ## v2.1.0 (Unreleased)
 
+- Fixed `Key` validation for items that are only orderable by the key function, such as Pydantic models. Containers now use the key during construction.
+
 - Removed support for Python 3.9.
 - Added support for Python 3.14 and 3.15.
 - Removed the `tests` optional dependency extra, which only listed pytest.
