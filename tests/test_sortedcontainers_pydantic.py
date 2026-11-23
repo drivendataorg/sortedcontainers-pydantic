@@ -1,6 +1,15 @@
 from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 
-from pydantic import BaseModel, PlainSerializer, SerializeAsAny, TypeAdapter
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    PlainSerializer,
+    PydanticSchemaGenerationError,
+    SerializeAsAny,
+    TypeAdapter,
+    ValidationError,
+)
+from pydantic_core import core_schema
 import pytest
 import sortedcontainers as sc
 
@@ -483,6 +492,67 @@ def test_sorted_set_with_key():
         assert ta.validate_python([[3, 1, 2]]) == [expected]
 
 
+def test_key_with_items_only_orderable_by_key():
+    class Point(BaseModel, frozen=True):
+        x: int
+
+    expected = [Point(x=1), Point(x=2), Point(x=3)]
+
+    list_annotations = (
+        sc_p.SortedList[Point],
+        sc_p.SortedSet[Point],
+        Annotated[sc.SortedList[Point], sc_p.SortedListPydanticAnnotation],
+        Annotated[sc.SortedSet[Point], sc_p.SortedSetPydanticAnnotation],
+    )
+    for annotation in list_annotations:
+        ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda p: p.x)])
+        assert list(ta.validate_python([{"x": 2}, {"x": 3}, {"x": 1}])) == expected
+
+    dict_annotations = (
+        sc_p.SortedDict[Point, str],
+        Annotated[sc.SortedDict[Point, str], sc_p.SortedDictPydanticAnnotation],
+    )
+    for annotation in dict_annotations:
+        ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda p: p.x)])
+        result = ta.validate_python({Point(x=2): "b", Point(x=3): "c", Point(x=1): "a"})
+        assert list(result.keys()) == expected
+
+
+def test_key_with_nested_containers():
+    ta = TypeAdapter(Annotated[sc_p.SortedList[sc_p.SortedList[int]], sc_p.Key(len)])
+    result = ta.validate_python([[3, 2, 1], [5, 4]])
+    assert list(result) == [[4, 5], [1, 2, 3]]
+    assert all(type(inner) is sc_p.SortedList for inner in result)
+
+    ta = TypeAdapter(sc_p.SortedList[Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)]])
+    result = ta.validate_python([[1, 2, 3], [4, 5]])
+    assert list(result) == [[3, 2, 1], [5, 4]]
+
+
+def test_key_with_other_annotations():
+    def at_most_three(v: sc_p.SortedList[int]) -> sc_p.SortedList[int]:
+        if len(v) > 3:
+            raise ValueError("too long")
+        return v
+
+    ta = TypeAdapter(
+        Annotated[sc_p.SortedList[int], AfterValidator(at_most_three), sc_p.Key(lambda x: -x)]
+    )
+    assert list(ta.validate_python([1, 3, 2])) == [3, 2, 1]
+    with pytest.raises(ValidationError):
+        ta.validate_python([1, 2, 3, 4])
+
+
+def test_key_not_applied():
+    class ReplacesSchema:
+        @classmethod
+        def __get_pydantic_core_schema__(cls, source_type, handler):
+            return core_schema.list_schema()
+
+    with pytest.raises(TypeError, match="Key could not be applied"):
+        TypeAdapter(Annotated[sc_p.SortedList[int], ReplacesSchema, sc_p.Key(lambda x: -x)])
+
+
 IntAsStr = Annotated[int, PlainSerializer(lambda x: str(x), return_type=str)]
 
 
@@ -729,3 +799,7 @@ def test_annotation_with_bad_source_type():
 def test_key_with_bad_source_type():
     with pytest.raises(sc_p.UnsupportedSourceTypeError):
         TypeAdapter(Annotated[dict, sc_p.Key(lambda x: x)])
+
+    # sortedcontainers class without the special annotation object
+    with pytest.raises(PydanticSchemaGenerationError):
+        TypeAdapter(Annotated[sc.SortedList[int], sc_p.Key(lambda x: x)])

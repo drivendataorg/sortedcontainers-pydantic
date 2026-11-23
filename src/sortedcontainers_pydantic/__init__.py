@@ -11,6 +11,7 @@ from typing import (
     Iterable,
     List,
     Mapping,
+    Optional,
     Set,
     Tuple,
     TypeVar,
@@ -63,6 +64,53 @@ class UnsupportedSourceTypeError(TypeError):
     pass
 
 
+class _KeyMarker:
+    """Marker that Key attaches to the source type to pass the key function to the
+    sortedcontainers class schema.
+    """
+
+    def __init__(self, key: Callable[[Any], "SupportsRichComparison"]):
+        self.key = key
+        self.applied = False
+
+    def __get_pydantic_core_schema__(
+        self, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        # Reached when the source type is a class that generates its own schema, e.g.,
+        # Annotated[SortedList[int], Key(...)]
+        get_schema = getattr(_get_constructor(source_type), "__get_pydantic_core_schema__", None)
+        if get_schema is None:
+            return handler(source_type)
+        return get_schema(Annotated[source_type, self], handler)  # type: ignore[no-any-return]
+
+
+def _split_key(
+    source_type: Any,
+) -> Tuple[Any, Optional[Callable[[Any], "SupportsRichComparison"]]]:
+    """Split a source type with a _KeyMarker into the unmarked source type and the key function."""
+    if get_origin(source_type) is Annotated:
+        tp, *metadata = get_args(source_type)
+        if len(metadata) == 1 and isinstance(metadata[0], _KeyMarker):
+            metadata[0].applied = True
+            return tp, metadata[0].key
+    return source_type, None
+
+
+def _with_key(cls: Any, key: Optional[Callable[[Any], "SupportsRichComparison"]]) -> Any:
+    """Get a constructor for the given sortedcontainers class that uses the given key function."""
+    if key is None:
+        return cls
+    # sortedcontainers.SortedList has magic behavior where the SortedList constructor returns
+    # SortedKeyList if given a key. We match that behavior for our SortedList.
+    if cls is SortedList:
+        cls = SortedKeyList
+    # SortedDict takes the key function as its first positional argument and treats keyword
+    # arguments as items.
+    if issubclass(cls, sortedcontainers.SortedDict):
+        return partial(cls, key)
+    return partial(cls, key=key)
+
+
 def _get_constructor(tp: Any) -> Any:
     """Get the relevant class constructor for the given type annotation, e.g., SortedList from
     SortedList[int] or appropriate subclass.
@@ -99,6 +147,7 @@ class SortedDictPydanticAnnotation:
             - If it's an iterable, pass to SortedList constructor
         - Serialization: Convert to a list
         """
+        source_type, key = _split_key(source_type)
         if cls is SortedDictPydanticAnnotation:
             # Used as annotation, i.e., Annotated[..., SortedDictPydanticAnnotation]
             try:
@@ -109,6 +158,8 @@ class SortedDictPydanticAnnotation:
                     f"got '{e.parsed}' parsed from annotation '{source_type}'."
                 )
                 raise UnsupportedSourceTypeError(msg) from e
+
+        constructor = _with_key(cls, key)
 
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
@@ -126,18 +177,18 @@ class SortedDictPydanticAnnotation:
 
         # Schema for when the input is a mapping
         from_mapping_schema = core_schema.no_info_after_validator_function(
-            function=cls, schema=mapping_t_schema
+            function=constructor, schema=mapping_t_schema
         )
 
         # Schema for when the input is an iterable of pairs
         from_iterable_of_pairs_schema = core_schema.no_info_after_validator_function(
-            function=cls, schema=iterable_of_pairs_t_schema
+            function=constructor, schema=iterable_of_pairs_t_schema
         )
 
         # Union the schemas
-        # Only include instance_schema if there are no type arguments
-        # Otherwise an existing instance with wrong argument types won't be coerced
-        if args:
+        # Only include instance_schema if there are no type arguments or key function
+        # Otherwise an existing instance with wrong argument types or key function won't be coerced
+        if args or key is not None:
             python_schema = core_schema.union_schema(
                 [from_mapping_schema, from_iterable_of_pairs_schema]
             )
@@ -184,6 +235,7 @@ class SortedListPydanticAnnotation:
             - If it's an iterable, pass to SortedList constructor
         - Serialization: Convert to a list
         """
+        source_type, key = _split_key(source_type)
         if cls is SortedListPydanticAnnotation:
             # Used as annotation, e.g., Annotated[..., SortedListPydanticAnnotation]
             try:
@@ -194,6 +246,8 @@ class SortedListPydanticAnnotation:
                     f"got '{e.parsed}' parsed from annotation '{source_type}'."
                 )
                 raise UnsupportedSourceTypeError(msg) from e
+
+        constructor = _with_key(cls, key)
 
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
@@ -209,14 +263,14 @@ class SortedListPydanticAnnotation:
 
         # Schema for when the input is an iterable
         from_iterable_schema = core_schema.no_info_after_validator_function(
-            function=cls, schema=iterable_t_schema
+            function=constructor, schema=iterable_t_schema
         )
 
         # Union of the two schemas
-        # Only include instance_schema if there are no type arguments
-        # Otherwise an existing instance with wrong argument types won't be coerced
+        # Only include instance_schema if there are no type arguments or key function
+        # Otherwise an existing instance with wrong argument types or key function won't be coerced
         python_schema: core_schema.CoreSchema
-        if args:
+        if args or key is not None:
             python_schema = from_iterable_schema
         else:
             python_schema = core_schema.union_schema([instance_schema, from_iterable_schema])
@@ -278,6 +332,7 @@ class SortedSetPydanticAnnotation:
             - If it's an iterable, pass to SortedSet constructor
         - Serialization: Convert to a list
         """
+        source_type, key = _split_key(source_type)
         if cls is SortedSetPydanticAnnotation:
             # Used as annotation, i.e., Annotated[..., SortedSetPydanticAnnotation]
             try:
@@ -288,6 +343,8 @@ class SortedSetPydanticAnnotation:
                     f"got '{e.parsed}' parsed from annotation '{source_type}'."
                 )
                 raise UnsupportedSourceTypeError(msg) from e
+
+        constructor = _with_key(cls, key)
 
         # Schema for when the input is already an instance of this class
         instance_schema = core_schema.is_instance_schema(cls)
@@ -305,18 +362,18 @@ class SortedSetPydanticAnnotation:
 
         # Schema for when the input is a set
         from_set_schema = core_schema.no_info_after_validator_function(
-            function=cls, schema=set_t_schema
+            function=constructor, schema=set_t_schema
         )
 
         # Schema for when the input is an iterable
         from_iterable_schema = core_schema.no_info_after_validator_function(
-            function=cls, schema=iterable_t_schema
+            function=constructor, schema=iterable_t_schema
         )
 
         # Union of the schemas
-        # Only include instance_schema if there are no type arguments
-        # Otherwise an existing instance with wrong argument types won't be coerced
-        if args:
+        # Only include instance_schema if there are no type arguments or key function
+        # Otherwise an existing instance with wrong argument types or key function won't be coerced
+        if args or key is not None:
             python_schema = core_schema.union_schema([from_set_schema, from_iterable_schema])
         else:
             python_schema = core_schema.union_schema(
@@ -351,24 +408,16 @@ class Key:
         self, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
         try:
-            constructor = _get_constructor(source_type)
+            _get_constructor(source_type)
         except _UnsupportedSourceTypeError as e:
             msg = (
                 "Expected subclass of a sortedcontainers or sortedcontainers_pydantic class, "
                 f"got '{e.parsed}' parsed from annotation '{source_type}'."
             )
             raise UnsupportedSourceTypeError(msg) from e
-        # sortedcontainers.SortedList has magic behavior where the SortedList constructor returns
-        # SortedKeyList if given a key. We match that behavior for our SortedList.
-        if constructor is SortedList:
-            constructor = SortedKeyList
-        # SortedDict takes the key function as its first positional argument and treats keyword
-        # arguments as items.
-        if issubclass(constructor, sortedcontainers.SortedDict):
-            function = partial(constructor, self.key)
-        else:
-            function = partial(constructor, key=self.key)
-        return core_schema.no_info_after_validator_function(
-            function=function,
-            schema=handler(source_type),
-        )
+        marker = _KeyMarker(self.key)
+        schema = handler(Annotated[source_type, marker])
+        if not marker.applied:
+            msg = f"Key could not be applied to annotation '{source_type}'."
+            raise TypeError(msg)
+        return schema

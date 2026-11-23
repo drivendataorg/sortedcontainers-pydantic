@@ -9,6 +9,7 @@
 - Fixed `Key` with `SortedDict` so that the key function is used to sort keys. It was previously added to the dictionary as an item with key `"key"`.
 - Fixed the special annotation objects and `Key` to support subclasses at any depth below the sortedcontainers classes. Previously, only direct subclasses were supported.
 - Fixed serialization to use the declared item types, consistent with `list[T]` and `dict[K, V]`, so serializers attached to item types now apply. As a result, fields only on a subclass of a declared model item type are no longer included (annotate the item type with `SerializeAsAny`, e.g., `SortedList[SerializeAsAny[Base]]`, to keep them), and items that don't match the declared type emit Pydantic's serializer warning.
+- Fixed `Key` to construct the container with the key function, so that items that are only orderable by the key function are supported. Previously, the container was first constructed without the key function, which failed for such items. As a result, validators attached before `Key` now receive the container sorted by the key function, `Key` has no effect when attached after a validator that replaces validation, such as `PlainValidator`, and `Key` raises an error if attached after an annotation that replaces the schema without using it.
 
 ## v2.0.0 (2025-04-18)
 
