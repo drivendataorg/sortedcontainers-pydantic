@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from functools import partial
 import importlib.metadata
 from typing import (
     TYPE_CHECKING,
@@ -112,8 +111,18 @@ def _with_key(cls: Any, key: Optional[Callable[[Any], "SupportsRichComparison"]]
     # SortedDict takes the key function as its first positional argument and treats keyword
     # arguments as items.
     if issubclass(cls, sortedcontainers.SortedDict):
-        return partial(cls, key)
-    return partial(cls, key=key)
+
+        def constructor(value: Any) -> Any:
+            return cls(key, value)
+
+    else:
+
+        def constructor(value: Any) -> Any:
+            return cls(value, key=key)
+
+    # Pydantic uses the function name in error locations
+    constructor.__name__ = cls.__name__
+    return constructor
 
 
 def _get_constructor(tp: Any) -> Any:
@@ -191,9 +200,9 @@ class SortedDictPydanticAnnotation:
         )
 
         # Union the schemas
-        # Only include instance_schema if there are no type arguments or key function
-        # Otherwise an existing instance with wrong argument types or key function won't be coerced
-        if args or key is not None:
+        # Only include instance_schema if there are no type arguments
+        # Otherwise an existing instance with wrong argument types won't be coerced
+        if args:
             python_schema = core_schema.union_schema(
                 [from_mapping_schema, from_iterable_of_pairs_schema]
             )
@@ -272,10 +281,10 @@ class SortedListPydanticAnnotation:
         )
 
         # Union of the two schemas
-        # Only include instance_schema if there are no type arguments or key function
-        # Otherwise an existing instance with wrong argument types or key function won't be coerced
+        # Only include instance_schema if there are no type arguments
+        # Otherwise an existing instance with wrong argument types won't be coerced
         python_schema: core_schema.CoreSchema
-        if args or key is not None:
+        if args:
             python_schema = from_iterable_schema
         else:
             python_schema = core_schema.union_schema([instance_schema, from_iterable_schema])
@@ -376,9 +385,9 @@ class SortedSetPydanticAnnotation:
         )
 
         # Union of the schemas
-        # Only include instance_schema if there are no type arguments or key function
-        # Otherwise an existing instance with wrong argument types or key function won't be coerced
-        if args or key is not None:
+        # Only include instance_schema if there are no type arguments
+        # Otherwise an existing instance with wrong argument types won't be coerced
+        if args:
             python_schema = core_schema.union_schema([from_set_schema, from_iterable_schema])
         else:
             python_schema = core_schema.union_schema(
@@ -412,10 +421,8 @@ class Key:
     def __get_pydantic_core_schema__(
         self, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        if get_origin(source_type) is Annotated and isinstance(
-            get_args(source_type)[-1], _KeyMarker
-        ):
-            # A Key further out applies to the same container
+        if _split_key(source_type)[1] is not None:
+            # A Key further out applies to the same container and overrides this one
             return handler(source_type)
         try:
             constructor = _get_constructor(source_type)
@@ -428,8 +435,7 @@ class Key:
         keyed_constructor = _with_key(constructor, self.key)
 
         def ensure_keyed(value: Any) -> Any:
-            # The container is built with the key function unless an annotation before Key
-            # replaced it
+            # Rebuild unless the inner schema already built the container with this key function
             if isinstance(value, constructor) and value.key is self.key:
                 return value
             return keyed_constructor(value)

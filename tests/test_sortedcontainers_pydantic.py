@@ -4,6 +4,7 @@ from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 from pydantic import (
     AfterValidator,
     BaseModel,
+    ConfigDict,
     Field,
     PlainSerializer,
     PydanticSchemaGenerationError,
@@ -581,6 +582,16 @@ def test_key_with_annotation_that_replaces_schema():
     assert list(result) == [3, 2, 1]
 
 
+def test_key_with_arbitrary_sortedcontainers_type():
+    ta = TypeAdapter(
+        Annotated[sc.SortedList[int], sc_p.Key(lambda x: -x)],
+        config=ConfigDict(arbitrary_types_allowed=True),
+    )
+    result = ta.validate_python(sc.SortedList([1, 3, 2]))
+    assert isinstance(result, sc.SortedKeyList)
+    assert list(result) == [3, 2, 1]
+
+
 def test_multiple_keys():
     Descending = Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)]
     ta = TypeAdapter(Annotated[Descending, sc_p.Key(abs)])
@@ -588,6 +599,7 @@ def test_multiple_keys():
 
 
 def test_key_in_dataclass():
+    # Pydantic 2.0 and 2.1 apply the Annotated metadata of dataclass fields twice
     @dataclasses.dataclass
     class DataClass:
         lst: Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)]
