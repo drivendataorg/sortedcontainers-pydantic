@@ -71,29 +71,32 @@ class _KeyMarker:
 
     def __init__(self, key: Callable[[Any], "SupportsRichComparison"]):
         self.key = key
-        self.applied = False
 
     def __get_pydantic_core_schema__(
         self, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        # Reached when the source type is a class that generates its own schema, e.g.,
+        # Reached when the source type's own class generates the schema, e.g.,
         # Annotated[SortedList[int], Key(...)]
-        get_schema = getattr(_get_constructor(source_type), "__get_pydantic_core_schema__", None)
-        if get_schema is None:
-            return handler(source_type)
-        return get_schema(Annotated[source_type, self], handler)  # type: ignore[no-any-return]
+        cls = _get_constructor(source_type)
+        if issubclass(
+            cls,
+            (
+                SortedDictPydanticAnnotation,
+                SortedListPydanticAnnotation,
+                SortedSetPydanticAnnotation,
+            ),
+        ):
+            return cls.__get_pydantic_core_schema__(Annotated[source_type, self], handler)  # type: ignore[no-any-return]
+        return handler(source_type)
 
 
 def _split_key(
     source_type: Any,
 ) -> Tuple[Any, Optional[Callable[[Any], "SupportsRichComparison"]]]:
-    """Split a source type with a _KeyMarker into the unmarked source type and the key function,
-    and mark the _KeyMarker as applied.
-    """
+    """Split a source type with a _KeyMarker into the unmarked source type and the key function."""
     if get_origin(source_type) is Annotated:
         tp, *metadata = get_args(source_type)
         if len(metadata) == 1 and isinstance(metadata[0], _KeyMarker):
-            metadata[0].applied = True
             return tp, metadata[0].key
     return source_type, None
 
@@ -415,18 +418,22 @@ class Key:
             # A Key further out applies to the same container
             return handler(source_type)
         try:
-            _get_constructor(source_type)
+            constructor = _get_constructor(source_type)
         except _UnsupportedSourceTypeError as e:
             msg = (
                 "Expected subclass of a sortedcontainers or sortedcontainers_pydantic class, "
                 f"got '{e.parsed}' parsed from annotation '{source_type}'."
             )
             raise UnsupportedSourceTypeError(msg) from e
-        marker = _KeyMarker(self.key)
-        schema = handler(Annotated[source_type, marker])
-        if not marker.applied:
-            # Nothing built the container with the key function, so rebuild the result with it
-            schema = core_schema.no_info_after_validator_function(
-                function=_with_key(_get_constructor(source_type), self.key), schema=schema
-            )
-        return schema
+        keyed_constructor = _with_key(constructor, self.key)
+
+        def ensure_keyed(value: Any) -> Any:
+            # The container is built with the key function unless an annotation before Key
+            # replaced it
+            if isinstance(value, constructor) and value.key is self.key:
+                return value
+            return keyed_constructor(value)
+
+        return core_schema.no_info_after_validator_function(
+            function=ensure_keyed, schema=handler(Annotated[source_type, _KeyMarker(self.key)])
+        )

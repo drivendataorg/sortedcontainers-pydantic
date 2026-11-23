@@ -547,10 +547,26 @@ def test_key_with_other_annotations():
     assert list(received[0]) == [3, 2, 1]
 
     class Model(BaseModel):
-        lst: Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)] = Field(max_length=2)
+        lst: Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)] = Field(min_length=2)
 
+    result = Model(lst=[1, 3, 2]).lst
+    assert isinstance(result, sc_p.SortedKeyList)
+    assert list(result) == [3, 2, 1]
     with pytest.raises(ValidationError):
-        Model(lst=[1, 2, 3])
+        Model(lst=[1])
+
+
+def test_key_with_validator_that_replaces_container():
+    ta = TypeAdapter(
+        Annotated[
+            sc_p.SortedList[int],
+            AfterValidator(lambda v: sc_p.SortedList(x for x in v if x != 2)),
+            sc_p.Key(lambda x: -x),
+        ]
+    )
+    result = ta.validate_python([1, 2, 3])
+    assert isinstance(result, sc_p.SortedKeyList)
+    assert list(result) == [3, 1]
 
 
 def test_key_with_annotation_that_replaces_schema():
