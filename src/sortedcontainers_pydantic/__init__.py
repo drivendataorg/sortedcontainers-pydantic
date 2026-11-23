@@ -104,6 +104,8 @@ def _with_key(cls: Any, key: Optional[Callable[[Any], "SupportsRichComparison"]]
     """Get a constructor for the given sortedcontainers class that uses the given key function."""
     if key is None:
         return cls
+    # Pydantic uses the function name in error locations
+    name = cls.__name__
     # sortedcontainers.SortedList has magic behavior where the SortedList constructor returns
     # SortedKeyList if given a key. We match that behavior for our SortedList.
     if cls is SortedList:
@@ -120,8 +122,7 @@ def _with_key(cls: Any, key: Optional[Callable[[Any], "SupportsRichComparison"]]
         def constructor(value: Any) -> Any:
             return cls(value, key=key)
 
-    # Pydantic uses the function name in error locations
-    constructor.__name__ = cls.__name__
+    constructor.__name__ = name
     return constructor
 
 
