@@ -87,7 +87,9 @@ class _KeyMarker:
 def _split_key(
     source_type: Any,
 ) -> Tuple[Any, Optional[Callable[[Any], "SupportsRichComparison"]]]:
-    """Split a source type with a _KeyMarker into the unmarked source type and the key function."""
+    """Split a source type with a _KeyMarker into the unmarked source type and the key function,
+    and mark the _KeyMarker as applied.
+    """
     if get_origin(source_type) is Annotated:
         tp, *metadata = get_args(source_type)
         if len(metadata) == 1 and isinstance(metadata[0], _KeyMarker):
@@ -407,6 +409,11 @@ class Key:
     def __get_pydantic_core_schema__(
         self, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
+        if get_origin(source_type) is Annotated and isinstance(
+            get_args(source_type)[-1], _KeyMarker
+        ):
+            # A Key further out applies to the same container
+            return handler(source_type)
         try:
             _get_constructor(source_type)
         except _UnsupportedSourceTypeError as e:
@@ -418,6 +425,8 @@ class Key:
         marker = _KeyMarker(self.key)
         schema = handler(Annotated[source_type, marker])
         if not marker.applied:
-            msg = f"Key could not be applied to annotation '{source_type}'."
-            raise TypeError(msg)
+            # Nothing built the container with the key function, so rebuild the result with it
+            schema = core_schema.no_info_after_validator_function(
+                function=_with_key(_get_constructor(source_type), self.key), schema=schema
+            )
         return schema

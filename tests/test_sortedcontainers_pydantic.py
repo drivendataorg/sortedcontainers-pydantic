@@ -1,8 +1,10 @@
+import dataclasses
 from typing import Annotated, Callable, Dict, Iterable, List, Optional, Set
 
 from pydantic import (
     AfterValidator,
     BaseModel,
+    Field,
     PlainSerializer,
     PydanticSchemaGenerationError,
     SerializeAsAny,
@@ -507,6 +509,7 @@ def test_key_with_items_only_orderable_by_key():
     for annotation in list_annotations:
         ta = TypeAdapter(Annotated[annotation, sc_p.Key(lambda p: p.x)])
         assert list(ta.validate_python([{"x": 2}, {"x": 3}, {"x": 1}])) == expected
+        assert list(ta.validate_json('[{"x": 2}, {"x": 3}, {"x": 1}]')) == expected
 
     dict_annotations = (
         sc_p.SortedDict[Point, str],
@@ -530,27 +533,50 @@ def test_key_with_nested_containers():
 
 
 def test_key_with_other_annotations():
-    def at_most_three(v: sc_p.SortedList[int]) -> sc_p.SortedList[int]:
-        if len(v) > 3:
-            raise ValueError("too long")
+    received = []
+
+    def record(v: sc_p.SortedList[int]) -> sc_p.SortedList[int]:
+        received.append(v)
         return v
 
     ta = TypeAdapter(
-        Annotated[sc_p.SortedList[int], AfterValidator(at_most_three), sc_p.Key(lambda x: -x)]
+        Annotated[sc_p.SortedList[int], AfterValidator(record), sc_p.Key(lambda x: -x)]
     )
     assert list(ta.validate_python([1, 3, 2])) == [3, 2, 1]
+    assert isinstance(received[0], sc_p.SortedKeyList)
+    assert list(received[0]) == [3, 2, 1]
+
+    class Model(BaseModel):
+        lst: Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)] = Field(max_length=2)
+
     with pytest.raises(ValidationError):
-        ta.validate_python([1, 2, 3, 4])
+        Model(lst=[1, 2, 3])
 
 
-def test_key_not_applied():
+def test_key_with_annotation_that_replaces_schema():
     class ReplacesSchema:
         @classmethod
         def __get_pydantic_core_schema__(cls, source_type, handler):
-            return core_schema.list_schema()
+            return core_schema.list_schema(core_schema.int_schema())
 
-    with pytest.raises(TypeError, match="Key could not be applied"):
-        TypeAdapter(Annotated[sc_p.SortedList[int], ReplacesSchema, sc_p.Key(lambda x: -x)])
+    ta = TypeAdapter(Annotated[sc_p.SortedList[int], ReplacesSchema, sc_p.Key(lambda x: -x)])
+    result = ta.validate_python([1, 3, 2])
+    assert isinstance(result, sc_p.SortedKeyList)
+    assert list(result) == [3, 2, 1]
+
+
+def test_multiple_keys():
+    Descending = Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)]
+    ta = TypeAdapter(Annotated[Descending, sc_p.Key(abs)])
+    assert list(ta.validate_python([1, -5, 3])) == [1, 3, -5]
+
+
+def test_key_in_dataclass():
+    @dataclasses.dataclass
+    class DataClass:
+        lst: Annotated[sc_p.SortedList[int], sc_p.Key(lambda x: -x)]
+
+    assert list(TypeAdapter(DataClass).validate_python({"lst": [1, 3, 2]}).lst) == [3, 2, 1]
 
 
 IntAsStr = Annotated[int, PlainSerializer(lambda x: str(x), return_type=str)]
