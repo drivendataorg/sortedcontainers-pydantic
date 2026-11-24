@@ -131,9 +131,10 @@ jobs:
       - name: Report coverage
         id: report
         run: |
-          uv run --only-group tests -- coverage report
+          uv run --only-group tests -- coverage report --show-missing
           uv run --only-group tests -- coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
           uv run --only-group tests -- coverage html
+          uv run --only-group tests -- coverage json
           total=$(uv run --only-group tests -- coverage report --format=total)
           echo "total=$total" >> "$GITHUB_OUTPUT"
 
@@ -142,6 +143,20 @@ jobs:
         with:
           name: coverage-html
           path: htmlcov/
+
+      - name: Upload JSON coverage report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-json
+          path: coverage.json
+
+      - name: Merge coverage data artifacts
+        uses: actions/upload-artifact/merge@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: coverage-data
+          pattern: coverage-data-*
+          include-hidden-files: true
+          delete-merged: true
 
   coverage-badge:
     name: Publish coverage badge
@@ -194,6 +209,6 @@ jobs:
     permissions:
       issues: write
     steps:
-      - uses: jayqi/failed-build-issue-action@940568ce50eeef3f31a920614cefcc6102d2f930 # v1.3.0
+      - uses: drivendataorg/failed-build-issue-action@940568ce50eeef3f31a920614cefcc6102d2f930 # v1.3.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
